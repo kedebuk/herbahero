@@ -117,6 +117,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="card">
+    <div class="card-head">📊 Facebook & CAPI Settings</div>
+    <div class="card-body">
+      <div class="info-box">
+        Pengaturan default Facebook Pixel & Conversions API. Nilai ini dipakai sebagai default saat membuat LP baru di Builder.
+      </div>
+      <br>
+      <div class="fg">
+        <label>Facebook Pixel ID</label>
+        <input type="text" id="fbPixelId" placeholder="1234567890123456">
+      </div>
+      <div class="fg">
+        <label>CAPI Access Token</label>
+        <input type="password" id="fbCapiToken" placeholder="EAAxxxxxxxx...">
+        <div class="hint">Dari Meta Business → Pixel → Settings → Conversions API. Tersimpan lokal.</div>
+      </div>
+      <div class="fg">
+        <label>Test Event Code (opsional)</label>
+        <input type="text" id="fbTestCode" placeholder="TEST12345">
+        <div class="hint">Cek di Meta Events Manager → Test Events. Hapus saat sudah live.</div>
+      </div>
+      <div class="fg">
+        <label>GAS Webhook URL</label>
+        <input type="text" id="gasWebhookUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <div class="hint">URL Google Apps Script Web App yang menangani order.</div>
+      </div>
+      <div class="fg">
+        <label>Default Nomor WA CS</label>
+        <input type="tel" id="defaultWaNumber" placeholder="6285270404312">
+      </div>
+      <div id="fbStatusMsg" class="status"></div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btnFbSave" style="background:#16a34a">💾 Simpan</button>
+      </div>
+      <div id="fbSavedBadge" class="saved-badge" style="margin-top:10px">✅ Facebook & CAPI settings tersimpan</div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-head">🔗 Quick Links</div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
       <a href="/admin/pages.html" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ LP Manager</a>
@@ -236,6 +274,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
   function showCF(type, msg) {
     var s = el('cfStatusMsg');
+    s.className = 'status' + (type ? ' on ' + type : '');
+    s.textContent = msg;
+  }
+
+  /* ── Facebook & CAPI ── */
+  var fbPx = localStorage.getItem('fb_pixel_id');
+  var fbCt = localStorage.getItem('fb_capi_token');
+  var fbTc = localStorage.getItem('fb_test_code');
+  var gasWh = localStorage.getItem('gas_webhook_url');
+  var defWa = localStorage.getItem('default_wa_number');
+  if (fbPx) el('fbPixelId').value = fbPx;
+  if (fbCt) el('fbCapiToken').value = fbCt;
+  if (fbTc) el('fbTestCode').value = fbTc;
+  if (gasWh) el('gasWebhookUrl').value = gasWh;
+  if (defWa) el('defaultWaNumber').value = defWa;
+
+  el('btnFbSave').addEventListener('click', function(){
+    var px = el('fbPixelId').value.trim();
+    var ct = el('fbCapiToken').value.trim();
+    var tc = el('fbTestCode').value.trim();
+    var wh = el('gasWebhookUrl').value.trim();
+    var wa = el('defaultWaNumber').value.trim();
+    if (px) localStorage.setItem('fb_pixel_id', px); else localStorage.removeItem('fb_pixel_id');
+    if (ct) localStorage.setItem('fb_capi_token', ct); else localStorage.removeItem('fb_capi_token');
+    if (tc) localStorage.setItem('fb_test_code', tc); else localStorage.removeItem('fb_test_code');
+    if (wh) localStorage.setItem('gas_webhook_url', wh); else localStorage.removeItem('gas_webhook_url');
+    if (wa) localStorage.setItem('default_wa_number', wa); else localStorage.removeItem('default_wa_number');
+    el('fbSavedBadge').classList.add('on');
+    showFB('ok', '✅ Facebook & CAPI settings tersimpan.');
+    setTimeout(function(){ el('fbSavedBadge').classList.remove('on'); }, 3000);
+  });
+
+  function showFB(type, msg) {
+    var s = el('fbStatusMsg');
     s.className = 'status' + (type ? ' on ' + type : '');
     s.textContent = msg;
   }

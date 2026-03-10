@@ -4,11 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="pageTitle">Nama Produk</title>
+<meta property="og:title" id="ogTitle" content="Nama Produk">
+<meta property="og:description" id="ogDesc" content="">
+<meta property="og:image" id="ogImage" content="">
+<meta property="og:url" id="ogUrl" content="">
+<meta property="og:type" content="product">
+<meta name="description" id="metaDesc" content="">
 <link rel="stylesheet" href="assets/style.css">
 <script>
 const LP_CONFIG = {
   title: "Nama Produk — Tagline Menarik",
   pixelId: "XXXXXXXXXXXXXXX",
+  capiToken: "",
+  capiTestCode: "",
+  ogImage: "",
+  ogDescription: "",
   heroImage: "assets/images/placeholder.jpg",
   heroAlt: "Foto produk",
   heroSubtitle: "Subtitle singkat yang menarik perhatian",
@@ -51,12 +61,23 @@ const LP_CONFIG = {
 </head>
 <body>
 <script>
+/* --- Pixel helpers --- */
+function getFbc(){var m=window.location.search.match(/fbclid=([^&]+)/);if(m)return"fb.1."+Date.now()+"."+m[1];var c=document.cookie.match(/(^|; )_fbc=([^;]*)/);return c?c[2]:"";}
+function getFbp(){var c=document.cookie.match(/(^|; )_fbp=([^;]*)/);return c?c[2]:"";}
+function generateEventId(){return"evt_"+Date.now()+"_"+Math.random().toString(36).substr(2,9);}
+/* Store fbclid as _fbc cookie */
+(function(){var fbclid=new URLSearchParams(window.location.search).get("fbclid");if(fbclid){var fbc="fb.1."+Date.now()+"."+fbclid;document.cookie="_fbc="+fbc+"; max-age=7776000; path=/; SameSite=Lax";}})();
+/* --- Meta Pixel init --- */
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
 document,'script','https://connect.facebook.net/en_US/fbevents.js');
-if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFIG.pixelId);fbq('track','PageView');}
+if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
+  fbq('init',LP_CONFIG.pixelId);
+  var _pvId=generateEventId();fbq('track','PageView',{},{eventID:_pvId});
+  var _vcId=generateEventId();fbq('track','ViewContent',{content_name:LP_CONFIG.productName,value:LP_CONFIG.productPrice,currency:'IDR'},{eventID:_vcId});
+}
 </script>
 
 <section class="lp-hero"><img id="heroImg" src="" alt=""><div class="lp-hero-overlay"><h1 id="heroTitle"></h1><p id="heroSubtitle"></p></div></section>
@@ -174,6 +195,12 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
   document.getElementById('formProductName').textContent = C.productName;
   document.getElementById('priceDisplay').textContent = 'Rp '+C.productPrice.toLocaleString('id-ID');
   document.getElementById('footerText').textContent = '\u00A9 '+new Date().getFullYear()+' '+C.productName;
+  // OG meta tags
+  document.getElementById('ogTitle').setAttribute('content', C.title||C.productName);
+  document.getElementById('ogDesc').setAttribute('content', C.ogDescription||C.heroSubtitle||'');
+  document.getElementById('metaDesc').setAttribute('content', C.ogDescription||C.heroSubtitle||'');
+  document.getElementById('ogImage').setAttribute('content', C.ogImage||C.heroImage||'');
+  document.getElementById('ogUrl').setAttribute('content', window.location.href);
 
   // Benefits
   var bh='';
@@ -340,7 +367,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
 
   // === Multi-step navigation ===
   window.goStep = function(n){
-    // Validate current step before advancing
+    // Validate current step before advance
     if(n>1 && !validateStep(1)) return;
     if(n>2 && !validateStep(2)) return;
     // Update panels
@@ -355,6 +382,11 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
     });
     // Progress bar
     document.getElementById('stepFill').style.width = ((n-1)/2*100)+'%';
+    // Pixel events per step
+    if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){
+      if(n===2){var _icId=generateEventId();fbq('track','InitiateCheckout',{value:0,currency:'IDR',content_name:C.productName},{eventID:_icId});}
+      if(n===3){var _ldId=generateEventId();fbq('track','Lead',{},{eventID:_ldId});}
+    }
     // Build summary for step 3
     if(n===3) buildSummary();
   };
@@ -423,6 +455,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
     var qty = parseInt(fd.get('qty'))||1;
     var total = subtotal + currentOngkir;
 
+    var eventId = generateEventId();
     var data = {
       nama:fd.get('nama'), wa:fd.get('wa'), alamat:fd.get('alamat'),
       kecamatan:fd.get('kecamatan')||'', kota:fd.get('kota')||document.getElementById('kotaName').value||'',
@@ -433,6 +466,21 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
       metodeBayar:fd.get('metodeBayar'), catatan:fd.get('catatan')||'',
       lpSource:window.location.pathname
     };
+    // Attach CAPI payload for server-side tracking via GAS
+    if(C.pixelId&&C.pixelId!=='XXXXXXXXXXXXXXX'){
+      data._capi={
+        pixelId:C.pixelId,
+        token:C.capiToken||"",
+        testCode:C.capiTestCode||"",
+        event:"Purchase",
+        value:total,
+        fbc:getFbc(),
+        fbp:getFbp(),
+        eventId:eventId,
+        clientUserAgent:navigator.userAgent,
+        eventSourceUrl:window.location.href
+      };
+    }
 
     btn.classList.add('loading'); btn.disabled=true;
     successMsg.classList.remove('show'); errorMsg.classList.remove('show');
@@ -442,7 +490,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFI
       btn.classList.remove('loading'); btn.disabled=false;
       successMsg.classList.add('show');
       document.getElementById('waLink').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">📱 Chat CS via WhatsApp</a>';
-      if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){fbq('track','Purchase',{value:total,currency:'IDR'});}
+      if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){fbq('track','Purchase',{value:total,currency:'IDR'},{eventID:eventId});}
       e.target.reset(); goStep(1);
     })
     .catch(function(){

@@ -354,6 +354,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   renderOptions();
   renderRates();
 
+  /* Auto-fill from Settings localStorage defaults (only if empty) */
+  if (!gv('bCapiToken')) { var _ct = localStorage.getItem('fb_capi_token'); if (_ct) el('bCapiToken').value = _ct; }
+  if (!gv('bPixelId'))   { var _px = localStorage.getItem('fb_pixel_id');   if (_px) el('bPixelId').value = _px; }
+  if (!gv('bTestCode'))  { var _tc = localStorage.getItem('fb_test_code');  if (_tc) el('bTestCode').value = _tc; }
+  if (!gv('bWebhook'))   { var _wh = localStorage.getItem('gas_webhook_url'); if (_wh) el('bWebhook').value = _wh; }
+  if (!gv('bWaNumber'))  { var _wa = localStorage.getItem('default_wa_number'); if (_wa) el('bWaNumber').value = _wa; }
+
   /* ── LP Identity ── */
   el('bLpName').addEventListener('input', function () {
     /* Auto-fill slug only if user hasn't manually edited it, or slug is empty */
@@ -618,12 +625,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   }
 
   function pixelSnippet(pid, eventOpen) {
-    return '<script>!function(f,b,e,v,n,t,s){'
+    var produk = gv('bProductName') || 'Produk';
+    var price  = parseInt(gv('bPrice')) || 99000;
+    return '<script>\n'
+      + 'function getFbc(){var m=window.location.search.match(/fbclid=([^&]+)/);if(m)return"fb.1."+Date.now()+"."+m[1];var c=document.cookie.match(/(^|; )_fbc=([^;]*)/);return c?c[2]:"";}\n'
+      + 'function getFbp(){var c=document.cookie.match(/(^|; )_fbp=([^;]*)/);return c?c[2]:"";}\n'
+      + 'function generateEventId(){return"evt_"+Date.now()+"_"+Math.random().toString(36).substr(2,9);}\n'
+      + '(function(){var fc=new URLSearchParams(window.location.search).get("fbclid");if(fc){document.cookie="_fbc=fb.1."+Date.now()+"."+fc+"; max-age=7776000; path=/; SameSite=Lax";}})();\n'
+      + '!function(f,b,e,v,n,t,s){'
       + 'if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};'
       + 'if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];'
       + 't=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];'
-      + 's.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");'
-      + 'fbq("init","' + pid + '");fbq("track","' + eventOpen + '");<\/script>\n';
+      + 's.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");\n'
+      + 'fbq("init","' + pid + '");fbq("track","' + eventOpen + '",{},{eventID:generateEventId()});\n'
+      + 'fbq("track","ViewContent",{content_name:"' + esc(produk) + '",value:' + price + ',currency:"IDR"},{eventID:generateEventId()});\n'
+      + '<\/script>\n';
   }
 
   function formSection(color) {
@@ -804,10 +820,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '    upsell:cbUp&&cbUp.checked?C.upsell.text:"",\n'
       + '    lpSource:window.location.href\n'
       + '  };\n'
+      + '  var evtId=typeof generateEventId==="function"?generateEventId():"evt_"+Date.now();\n'
       + '  if(C.capiToken||C.pixelId){\n'
       + '    data._capi={pixelId:C.pixelId,token:C.capiToken,testCode:C.testCode,\n'
       + '      event:C.eventSub,value:total,currency:"IDR",\n'
-      + '      fbc:getCookie("_fbc"),fbp:getCookie("_fbp")};\n'
+      + '      fbc:typeof getFbc==="function"?getFbc():getCookie("_fbc"),\n'
+      + '      fbp:typeof getFbp==="function"?getFbp():getCookie("_fbp"),\n'
+      + '      eventId:evtId,clientUserAgent:navigator.userAgent,eventSourceUrl:window.location.href};\n'
       + '  }\n'
       + '  btn.classList.add("loading");btn.disabled=true;\n'
       + '  document.getElementById("mOk").classList.remove("on");\n'
@@ -817,7 +836,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '    btn.classList.remove("loading");btn.disabled=false;\n'
       + '    document.getElementById("mOk").classList.add("on");\n'
       + '    document.getElementById("waOk").href=waHref(data.nama);\n'
-      + '    if(typeof fbq==="function"&&C.pixelId)fbq("track",C.eventSub,{value:total,currency:"IDR"});\n'
+      + '    if(typeof fbq==="function"&&C.pixelId)fbq("track",C.eventSub,{value:total,currency:"IDR"},{eventID:evtId});\n'
       + '    e.target.reset();hCalc();\n'
       + '  })\n'
       + '  .catch(function(){\n'

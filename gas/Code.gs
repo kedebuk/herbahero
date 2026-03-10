@@ -55,16 +55,21 @@ function sendCAPI(d, orderId) {
   try {
     var ud = {};
     if (d.wa)   ud.ph = [sha256Hex(normalizePhone(d.wa))];
-    if (d.nama) ud.fn = [sha256Hex(d.nama.split(' ')[0])];
+    if (d.nama) {
+      var parts = d.nama.trim().split(/\s+/);
+      ud.fn = [sha256Hex(parts[0])];
+      if (parts.length > 1) ud.ln = [sha256Hex(parts[parts.length - 1])];
+    }
     if (c.fbc && c.fbc !== '') ud.fbc = c.fbc;
     if (c.fbp && c.fbp !== '') ud.fbp = c.fbp;
+    if (c.clientUserAgent) ud.client_user_agent = c.clientUserAgent;
 
     var eventData = {
       event_name:       c.event || 'Purchase',
       event_time:       Math.floor(new Date().getTime() / 1000),
       action_source:    'website',
-      event_source_url: d.lpSource || d.src || '',
-      event_id:         orderId,
+      event_source_url: c.eventSourceUrl || d.lpSource || d.src || '',
+      event_id:         c.eventId || orderId,
       user_data:        ud,
       custom_data: {
         value:    c.value || d.total || 0,
@@ -78,12 +83,13 @@ function sendCAPI(d, orderId) {
     var url = 'https://graph.facebook.com/v19.0/' + c.pixelId
       + '/events?access_token=' + encodeURIComponent(c.token);
 
-    UrlFetchApp.fetch(url, {
+    var resp = UrlFetchApp.fetch(url, {
       method:           'post',
       contentType:      'application/json',
       payload:          JSON.stringify(payload),
       muteHttpExceptions: true
     });
+    Logger.log('CAPI response [' + resp.getResponseCode() + ']: ' + resp.getContentText());
   } catch (err) {
     Logger.log('CAPI error: ' + err.toString());
   }
@@ -154,6 +160,16 @@ function doGet(e) {
         }
       }
       return json({ success: false, error: 'Order not found' });
+    }
+    if (action === 'get_stats') {
+      var sh = getSheet();
+      var data = sh.getDataRange().getValues();
+      var stats = {};
+      for (var i = 1; i < data.length; i++) {
+        var status = (data[i][17] || 'Unknown').toString();
+        stats[status] = (stats[status] || 0) + 1;
+      }
+      return json({ success: true, stats: stats, totalOrders: data.length - 1 });
     }
     return json({ success: false, error: 'Unknown action' });
   } catch (err) {
