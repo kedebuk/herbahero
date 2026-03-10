@@ -192,7 +192,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   var C = LP_CONFIG, S = C.shipping||{};
   var useApi = (S.provider==='rajaongkir_v2'||S.provider==='rajaongkir') && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
   var RO_BASE = S.provider==='rajaongkir_v2' ? 'https://rajaongkir.komerce.id' : 'https://api.rajaongkir.com';
-  var currentOngkir = 0, subtotal = 0, cityCache = [];
+  var currentOngkir = 0, subtotal = 0, cityCache = [], destinationMeta = {};
 
   if(C.themeColor) document.documentElement.style.setProperty('--c', C.themeColor);
   document.getElementById('pageTitle').textContent = C.productName;
@@ -249,19 +249,21 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
         var items=(d.data&&Array.isArray(d.data))?d.data:[];
         if(!items.length&&d.rajaongkir&&d.rajaongkir.results)items=d.rajaongkir.results.map(function(c){return{id:c.city_id,label:c.type+' '+c.city_name,city_name:c.city_name,province:c.province};});
         if(!items.length){list.style.display='none';return;}
-        var h='';items.slice(0,25).forEach(function(c){var label=c.label||(c.city_name||'');var prov=c.province||'';h+='<div class="city-item" onmousedown="selectCity(\''+escAttr(c.id||'')+'\',\''+escAttr(label)+'\',\''+escAttr(prov)+'\')">'+esc(label)+'<small>'+esc(prov)+'</small></div>';});
+        var h='';items.slice(0,25).forEach(function(c){var id=(c.id||'');var label=c.label||((c.subdistrict_name||c.district_name||'')+', '+(c.city_name||'')+', '+(c.province||''));var prov=c.province||'';destinationMeta[id]={label:label,cityName:c.city_name||label,district:c.subdistrict_name||c.district_name||'',province:prov};h+='<div class="city-item" onmousedown="selectCity(\''+escAttr(id)+'\',\''+escAttr(label)+'\',\''+escAttr(prov)+'\')">'+esc(label)+'<small>'+esc(prov)+'</small></div>';});
         list.innerHTML=h;list.style.display='block';
       }).catch(function(){showFallback();list.style.display='none';});
     } else {
-      if(cityCache.length>0){var f=cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;});var h='';f.slice(0,20).forEach(function(c){h+='<div class="city-item" onmousedown="selectCity(\''+c.city_id+'\',\''+escAttr(c.type+' '+c.city_name)+'\',\''+escAttr(c.province)+'\')">'+esc(c.type+' '+c.city_name)+'<small>'+esc(c.province)+'</small></div>';});list.innerHTML=h||'<div style="padding:10px 12px;color:#9ca3af;font-size:.85rem">Tidak ditemukan</div>';list.style.display='block';return;}
+      if(cityCache.length>0){var f=cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;});var h='';f.slice(0,20).forEach(function(c){var id=c.city_id;var label=c.type+' '+c.city_name;destinationMeta[id]={label:label,cityName:c.city_name||label,district:'',province:c.province||''};h+='<div class="city-item" onmousedown="selectCity(\''+id+'\',\''+escAttr(label)+'\',\''+escAttr(c.province)+'\')">'+esc(label)+'<small>'+esc(c.province)+'</small></div>';});list.innerHTML=h||'<div style="padding:10px 12px;color:#9ca3af;font-size:.85rem">Tidak ditemukan</div>';list.style.display='block';return;}
       fetch(RO_BASE+'/starter/city',{headers:{'key':S.apiKey}}).then(function(r){return r.json();}).then(function(d){
         if(d.rajaongkir&&d.rajaongkir.results){cityCache=d.rajaongkir.results;searchCity(q);}
       }).catch(function(){showFallback();list.style.display='none';});
     }
   }
   window.selectCity=function(id,name,prov){
-    document.getElementById('citySearch').value=name;document.getElementById('destCityId').value=id;document.getElementById('kotaName').value=name;document.getElementById('cityList').style.display='none';
-    var p=document.querySelector('input[name="provinsi"]');if(p&&prov)p.value=prov;
+    var meta=destinationMeta[id]||{label:name,cityName:name,district:'',province:prov||''};
+    document.getElementById('citySearch').value=meta.label||name;document.getElementById('destCityId').value=id;document.getElementById('kotaName').value=meta.cityName||name;document.getElementById('cityList').style.display='none';
+    var k=document.querySelector('input[name="kecamatan"]');if(k&&meta.district)k.value=meta.district;
+    var p=document.querySelector('input[name="provinsi"]');if(p&&(meta.province||prov))p.value=meta.province||prov;
     var courier=document.getElementById('courierSelect').value;if(courier)window.checkOngkir();
   };
   window.checkOngkir=function(){
@@ -345,7 +347,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     var btn=document.getElementById('submitBtn'),successMsg=document.getElementById('successMsg'),errorMsg=document.getElementById('errorMsg');
     var fd=new FormData(e.target),qty=parseInt(fd.get('qty'))||1,total=subtotal+currentOngkir;
     var eventId=generateEventId();
-    var data={nama:fd.get('nama'),wa:fd.get('wa'),alamat:fd.get('alamat'),kecamatan:fd.get('kecamatan')||'',kota:fd.get('kota')||document.getElementById('kotaName').value||'',provinsi:fd.get('provinsi')||'',wilayah:document.getElementById('shippingDesc').value||'',produk:fd.get('produk'),qty:qty,ongkir:currentOngkir,total:total,metodeBayar:fd.get('metodeBayar'),catatan:fd.get('catatan')||'',lpSource:window.location.pathname,utm_source:sessionStorage.getItem("utm_source")||"",utm_medium:sessionStorage.getItem("utm_medium")||"",utm_campaign:sessionStorage.getItem("utm_campaign")||"",utm_content:sessionStorage.getItem("utm_content")||""};
+    var data={nama:fd.get('nama'),wa:fd.get('wa'),alamat:fd.get('alamat'),kecamatan:fd.get('kecamatan')||'',kota:fd.get('kota')||document.getElementById('kotaName').value||'',provinsi:fd.get('provinsi')||'',wilayah:document.getElementById('shippingDesc').value||'',destination_id:fd.get('destCityId')||'',destination_label:(document.getElementById('citySearch')||{}).value||'',shipping_provider:S.provider||'fallback',produk:fd.get('produk'),qty:qty,ongkir:currentOngkir,total:total,metodeBayar:fd.get('metodeBayar'),catatan:fd.get('catatan')||'',lpSource:window.location.pathname,utm_source:sessionStorage.getItem("utm_source")||"",utm_medium:sessionStorage.getItem("utm_medium")||"",utm_campaign:sessionStorage.getItem("utm_campaign")||"",utm_content:sessionStorage.getItem("utm_content")||""};
     // Attach CAPI payload for server-side tracking via GAS
     if(C.pixelId&&C.pixelId!=='XXXXXXXXXXXXXXX'){
       data._capi={pixelId:C.pixelId,token:C.capiToken||"",testCode:C.capiTestCode||"",event:"Purchase",value:total,fbc:getFbc(),fbp:getFbp(),eventId:eventId,clientUserAgent:navigator.userAgent,eventSourceUrl:window.location.href};

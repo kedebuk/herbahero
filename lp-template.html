@@ -213,6 +213,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     : 'https://api.rajaongkir.com';
   var currentOngkir = 0, subtotal = 0;
   var cityCache = [];
+  var destinationMeta = {};
 
   // Theme
   if(C.themeColor) document.documentElement.style.setProperty('--c', C.themeColor);
@@ -337,10 +338,12 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     if(!items.length){list.style.display='none';return;}
     var h='';
     items.slice(0,25).forEach(function(c){
-      var label = c.label || ((c.subdistrict_name||'') + ', ' + (c.city_name||'') + ', ' + (c.province||''));
+      var label = c.label || ((c.subdistrict_name||c.district_name||'') + ', ' + (c.city_name||'') + ', ' + (c.province||''));
       var cityName = c.city_name || label;
+      var district = c.subdistrict_name || c.district_name || '';
       var prov = c.province || '';
       var id = c.id || c.city_id || '';
+      destinationMeta[id] = {label:label, cityName:cityName, district:district, province:prov};
       h+='<div class="city-item" onmousedown="selectCityV2(\''+id+'\',\''+escAttr(label)+'\',\''+escAttr(prov)+'\')">'
         +'<span>'+esc(label)+'</span>'
         +'<small style="color:#9ca3af;display:block">'+esc(prov)+'</small>'
@@ -356,8 +359,11 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     if(!cities.length){list.style.display='none';return;}
     var h='';
     cities.slice(0,20).forEach(function(c){
-      h+='<div class="city-item" onmousedown="selectCityV2(\''+c.city_id+'\',\''+escAttr(c.type+' '+c.city_name)+'\',\''+escAttr(c.province)+'\')">'
-        +'<span>'+esc(c.type+' '+c.city_name)+'</span>'
+      var id = c.city_id;
+      var label = c.type+' '+c.city_name;
+      destinationMeta[id] = {label:label, cityName:c.city_name||label, district:'', province:c.province||''};
+      h+='<div class="city-item" onmousedown="selectCityV2(\''+id+'\',\''+escAttr(label)+'\',\''+escAttr(c.province)+'\')">'
+        +'<span>'+esc(label)+'</span>'
         +'<small style="color:#9ca3af;display:block">'+esc(c.province)+'</small>'
         +'</div>';
     });
@@ -369,12 +375,17 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
   window.selectCityV2 = function(id, label, prov){
-    document.getElementById('citySearch').value = label;
+    var meta = destinationMeta[id] || {label:label, cityName:label, district:'', province:prov||''};
+    document.getElementById('citySearch').value = meta.label || label;
     document.getElementById('destCityId').value = id;
-    document.getElementById('kotaName').value = label;
+    document.getElementById('kotaName').value = meta.cityName || label;
     document.getElementById('cityList').style.display='none';
+
+    var kecInput = document.querySelector('input[name="kecamatan"]');
     var provInput = document.querySelector('input[name="provinsi"]');
-    if(provInput && prov) provInput.value = prov;
+    if(kecInput && meta.district) kecInput.value = meta.district;
+    if(provInput && (meta.province||prov)) provInput.value = meta.province||prov;
+
     // Auto-trigger ongkir check kalau kurir sudah dipilih
     var courier = document.getElementById('courierSelect').value;
     if(courier) window.checkOngkir();
@@ -593,6 +604,9 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
       kecamatan:fd.get('kecamatan')||'', kota:fd.get('kota')||document.getElementById('kotaName').value||'',
       provinsi:fd.get('provinsi')||'',
       wilayah: document.getElementById('shippingDesc').value||'',
+      destination_id: fd.get('destCityId')||'',
+      destination_label: document.getElementById('citySearch') ? document.getElementById('citySearch').value : '',
+      shipping_provider: S.provider||'fallback',
       produk:fd.get('produk'), qty:qty,
       ongkir:currentOngkir, total:total,
       metodeBayar:fd.get('metodeBayar'), catatan:fd.get('catatan')||'',
