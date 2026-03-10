@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">AngetPol</title>
+<link rel="stylesheet" href="assets/style.css">
+<script>
+const LP_CONFIG = {
+  title: "AngetPol — Minuman Herbal Premium Anti Masuk Angin",
+  pixelId: "XXXXXXXXXXXXXXX",
+  heroImage: "assets/images/placeholder.jpg",
+  heroAlt: "AngetPol Minuman Herbal",
+  heroSubtitle: "Hangat dari dalam, sehat sepanjang hari",
+  productName: "AngetPol Herbal Premium",
+  productPrice: 89000,
+  productOptions: [
+    "Paket Coba (1 box - 10 sachet) — Rp 89.000",
+    "Paket Hemat (2 box - 20 sachet) — Rp 159.000",
+    "Paket Best Seller (3 box + 1 GRATIS) — Rp 239.000"
+  ],
+  benefits: [
+    {icon:"\uD83C\uDF3F",title:"100% Bahan Alami",desc:"Jahe merah, temulawak, dan rempah pilihan tanpa bahan kimia"},
+    {icon:"\u26A1",title:"Reaksi Cepat",desc:"Hangat terasa dalam 5 menit, langsung lega"},
+    {icon:"\uD83D\uDEE1\uFE0F",title:"Jaga Imunitas",desc:"Minum rutin untuk daya tahan tubuh optimal"},
+    {icon:"\uD83D\uDE0B",title:"Rasa Enak",desc:"Manis alami dari madu, bisa diseduh panas atau dingin"},
+    {icon:"\u2705",title:"BPOM Certified",desc:"Sudah terdaftar resmi BPOM, aman dikonsumsi"},
+    {icon:"\uD83D\uDCE6",title:"Praktis Sachet",desc:"Tinggal seduh, bisa dibawa traveling"}
+  ],
+  testimonials: [
+    {text:"Tiap hujan pasti sedia AngetPol. Langsung hangat, nggak jadi masuk angin.",author:"Pak Hendra - Surabaya",stars:5},
+    {text:"Anak saya suka rasanya, mau minum tanpa dipaksa.",author:"Bu Rina - Malang",stars:5},
+    {text:"Sudah langganan 6 bulan. Badan lebih fit, jarang sakit. Recommended!",author:"Mas Dedi - Jakarta",stars:5},
+    {text:"Pertama coba langsung cocok. Sekarang beli paket 3 box terus.",author:"Mbak Sari - Bandung",stars:5}
+  ],
+  webhookUrl: "https://script.google.com/macros/s/XXXXX/exec",
+  waNumber: "6285270404312",
+  waMessageTemplate: "Halo, saya ingin order {product} atas nama {name}",
+  themeColor: "#b45309",
+  shipping: {
+    provider: "rajaongkir",
+    apiKey: "YOUR_RAJAONGKIR_API_KEY",
+    originCityId: "501",
+    couriers: ["jne","jnt","sicepat","pos"],
+    weightGram: 300,
+    fallbackRates: [
+      {wilayah:"Jabodetabek",ongkir:12000,estimasi:"1-2 hari"},
+      {wilayah:"Jawa",ongkir:18000,estimasi:"2-3 hari"},
+      {wilayah:"Sumatera",ongkir:22000,estimasi:"3-5 hari"},
+      {wilayah:"Kalimantan",ongkir:28000,estimasi:"4-6 hari"},
+      {wilayah:"Sulawesi",ongkir:28000,estimasi:"4-6 hari"},
+      {wilayah:"Bali & NTB",ongkir:22000,estimasi:"3-5 hari"},
+      {wilayah:"Papua & Maluku",ongkir:40000,estimasi:"7-14 hari"}
+    ],
+    freeThreshold: 250000
+  }
+};
+</script>
+</head>
+<body>
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){fbq('init',LP_CONFIG.pixelId);fbq('track','PageView');}
+</script>
+
+<section class="lp-hero"><img id="heroImg" src="" alt=""><div class="lp-hero-overlay"><h1 id="heroTitle"></h1><p id="heroSubtitle"></p></div></section>
+<section class="lp-section"><h2 class="lp-section-title">Kenapa Harus Pilih Produk Ini?</h2><div class="benefits-grid" id="benefitsGrid"></div></section>
+<section class="lp-section"><h2 class="lp-section-title">Kata Mereka yang Sudah Coba</h2><div class="testimonials-grid" id="testimonialsGrid"></div></section>
+
+<section class="order-section" id="orderSection">
+<div class="order-form-wrapper">
+<h2>Order Sekarang</h2>
+<p class="form-subtitle" id="formProductName"></p>
+<div class="price-display"><div class="price" id="priceDisplay"></div><div class="price-note">Gratis ongkir untuk order di atas Rp 250.000!</div></div>
+
+<div class="step-indicator">
+  <div class="step-connector"><div class="step-connector-fill" id="stepFill"></div></div>
+  <div class="step-item active" data-step="1"><div class="step-circle">1</div><div class="step-label">Data Diri</div></div>
+  <div class="step-item" data-step="2"><div class="step-circle">2</div><div class="step-label">Pengiriman</div></div>
+  <div class="step-item" data-step="3"><div class="step-circle">3</div><div class="step-label">Konfirmasi</div></div>
+</div>
+
+<form id="orderForm" novalidate>
+<div class="step-panel active" id="step1">
+  <div class="form-group"><label>Nama Lengkap <span class="req">*</span></label><input type="text" name="nama" required placeholder="Masukkan nama lengkap"><div class="field-err">Nama wajib diisi</div></div>
+  <div class="form-group"><label>Nomor WhatsApp <span class="req">*</span></label><input type="tel" name="wa" required placeholder="08xxxxxxxxxx" pattern="^08[0-9]{8,13}$"><div class="hint">Format: 08xxxxxxxxxx</div><div class="field-err">Nomor WA tidak valid (harus diawali 08)</div></div>
+  <div class="form-group"><label>Alamat Lengkap <span class="req">*</span></label><textarea name="alamat" required placeholder="Jalan, RT/RW, Kelurahan, Kode Pos"></textarea><div class="field-err">Alamat wajib diisi</div></div>
+  <div class="form-row">
+    <div class="form-group"><label>Kecamatan</label><input type="text" name="kecamatan" placeholder="Kecamatan"></div>
+    <div class="form-group"><label>Provinsi</label><input type="text" name="provinsi" placeholder="Provinsi"></div>
+  </div>
+  <div class="form-group"><label>Catatan (opsional)</label><textarea name="catatan" placeholder="Catatan tambahan..." rows="2"></textarea></div>
+  <div class="form-nav"><button type="button" class="btn-next" onclick="goStep(2)">Lanjut ke Pengiriman →</button></div>
+</div>
+
+<div class="step-panel" id="step2">
+  <div class="form-group"><label>Pilihan Produk <span class="req">*</span></label><select name="produk" id="productSelect" required></select></div>
+  <div class="form-group"><label>Jumlah</label><input type="number" name="qty" value="1" min="1" max="99" onchange="updateTotal()"></div>
+  <div id="rajaongkirMode" style="display:none">
+    <div class="form-group"><label>Kota Tujuan <span class="req">*</span></label>
+      <input type="text" id="citySearch" placeholder="Ketik nama kota..." autocomplete="off">
+      <input type="hidden" name="destCityId" id="destCityId"><input type="hidden" name="kota" id="kotaName">
+      <div id="cityDropdown" style="position:relative"><div id="cityList" style="position:absolute;top:0;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50;display:none;box-shadow:0 4px 6px rgba(0,0,0,.07)"></div></div>
+    </div>
+    <div class="form-group"><label>Kurir</label><select id="courierSelect" onchange="checkOngkir()"><option value="">— Pilih kurir —</option></select></div>
+    <div id="shippingServices" style="display:none" class="shipping-info"></div>
+    <input type="hidden" name="ongkirAmount" id="ongkirAmount" value="0"><input type="hidden" name="shippingDesc" id="shippingDesc">
+  </div>
+  <div id="fallbackMode" style="display:none">
+    <div class="form-group"><label>Wilayah Pengiriman <span class="req">*</span></label><select id="wilayahSelect" onchange="selectWilayah()"><option value="">— Pilih wilayah —</option></select></div>
+    <div id="fallbackInfo" class="shipping-info" style="display:none"></div>
+  </div>
+  <div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px">
+    <div style="display:flex;justify-content:space-between;font-size:.9rem"><span>Subtotal:</span><strong id="subtotalDisplay">Rp 0</strong></div>
+    <div style="display:flex;justify-content:space-between;font-size:.9rem;margin-top:4px"><span>Ongkir:</span><strong id="ongkirDisplay">Rp 0</strong></div>
+    <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;margin-top:8px;padding-top:8px;border-top:2px solid #e5e7eb"><span>Total:</span><span id="totalDisplay" style="color:var(--c)">Rp 0</span></div>
+  </div>
+  <div class="form-group" style="margin-top:16px"><label>Metode Pembayaran <span class="req">*</span></label>
+    <div class="radio-group">
+      <label class="radio-option"><input type="radio" name="metodeBayar" value="Transfer BCA" required><span>Transfer BCA</span></label>
+      <label class="radio-option"><input type="radio" name="metodeBayar" value="Transfer Mandiri"><span>Transfer Mandiri</span></label>
+      <label class="radio-option"><input type="radio" name="metodeBayar" value="COD"><span>COD (Bayar di Tempat)</span></label>
+    </div>
+  </div>
+  <div class="form-nav"><button type="button" class="btn-prev" onclick="goStep(1)">← Kembali</button><button type="button" class="btn-next" onclick="goStep(3)">Review Order →</button></div>
+</div>
+
+<div class="step-panel" id="step3">
+  <div class="order-summary" id="orderSummary"></div>
+  <div class="form-nav"><button type="button" class="btn-prev" onclick="goStep(2)">← Ubah</button><button type="submit" class="btn-submit" id="submitBtn"><span class="spinner"></span><span class="btn-text">Kirim Order Sekarang</span></button></div>
+</div>
+</form>
+
+<div class="trust-badges"><span class="trust-badge">🔒 Data Aman</span><span class="trust-badge">📦 Pengiriman Cepat</span><span class="trust-badge">💬 CS Fast Response</span></div>
+<div class="form-message success" id="successMsg">✅ Order berhasil dikirim! CS kami akan menghubungi Anda via WhatsApp.<div class="wa-fallback" id="waLink"></div></div>
+<div class="form-message error" id="errorMsg">❌ Gagal mengirim order. Silakan coba lagi.<div class="wa-fallback" id="waFallback"></div></div>
+</div>
+</section>
+<footer class="lp-footer"><p id="footerText"></p></footer>
+
+<script>
+(function(){
+  var C = LP_CONFIG, S = C.shipping||{};
+  var useApi = S.provider==='rajaongkir' && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
+  var currentOngkir = 0, subtotal = 0, cityCache = [];
+
+  if(C.themeColor) document.documentElement.style.setProperty('--c', C.themeColor);
+  document.getElementById('pageTitle').textContent = C.productName;
+  document.getElementById('heroImg').src = C.heroImage;
+  document.getElementById('heroImg').alt = C.heroAlt;
+  document.getElementById('heroTitle').textContent = C.title;
+  document.getElementById('heroSubtitle').textContent = C.heroSubtitle||'';
+  document.getElementById('formProductName').textContent = C.productName;
+  document.getElementById('priceDisplay').textContent = 'Rp '+C.productPrice.toLocaleString('id-ID');
+  document.getElementById('footerText').textContent = '\u00A9 '+new Date().getFullYear()+' '+C.productName;
+
+  var bh='';C.benefits.forEach(function(b){bh+='<div class="benefit-card"><span class="benefit-icon">'+b.icon+'</span><div><h3>'+b.title+'</h3><p>'+b.desc+'</p></div></div>';});
+  document.getElementById('benefitsGrid').innerHTML=bh;
+  var th='';C.testimonials.forEach(function(t){var s='';for(var i=0;i<t.stars;i++)s+='\u2B50';th+='<div class="testimonial-card"><div class="stars">'+s+'</div><p>"'+t.text+'"</p><div class="author">\u2014 '+t.author+'</div></div>';});
+  document.getElementById('testimonialsGrid').innerHTML=th;
+  var ph='';C.productOptions.forEach(function(o){ph+='<option value="'+o+'">'+o+'</option>';});
+  document.getElementById('productSelect').innerHTML=ph;
+  document.getElementById('productSelect').addEventListener('change', updateTotal);
+
+  if(useApi){
+    document.getElementById('rajaongkirMode').style.display='block';
+    var cs=document.getElementById('courierSelect');
+    S.couriers.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c.toUpperCase();cs.appendChild(o);});
+    initCitySearch();
+  } else {
+    document.getElementById('fallbackMode').style.display='block';
+    var ws=document.getElementById('wilayahSelect');
+    (S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' \u2014 Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
+  }
+  updateTotal();
+
+  function initCitySearch(){
+    var input=document.getElementById('citySearch'),list=document.getElementById('cityList'),timer=null;
+    input.addEventListener('input',function(){clearTimeout(timer);var q=input.value.trim();if(q.length<2){list.style.display='none';return;}timer=setTimeout(function(){searchCity(q);},400);});
+    input.addEventListener('blur',function(){setTimeout(function(){list.style.display='none';},200);});
+  }
+  function searchCity(q){
+    if(cityCache.length>0){renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));return;}
+    fetch('https://api.rajaongkir.com/starter/city',{headers:{'key':S.apiKey}})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.rajaongkir&&d.rajaongkir.results){cityCache=d.rajaongkir.results;renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));}
+    }).catch(function(){
+      document.getElementById('rajaongkirMode').style.display='none';
+      document.getElementById('fallbackMode').style.display='block';
+      var ws=document.getElementById('wilayahSelect');
+      if(ws.options.length<=1){(S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' \u2014 Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});}
+    });
+  }
+  function renderCities(cities){
+    var list=document.getElementById('cityList');if(!cities.length){list.style.display='none';return;}
+    var h='';cities.slice(0,20).forEach(function(c){h+='<div style="padding:8px 12px;cursor:pointer;font-size:.9rem;border-bottom:1px solid #f3f4f6" onmousedown="selectCity(\''+c.city_id+"','"+c.type+' '+c.city_name+"','"+c.province+"')\" onmouseover=\"this.style.background='#dbeafe'\" onmouseout=\"this.style.background='#fff'\">"+c.type+' '+c.city_name+'<br><small style="color:#9ca3af">'+c.province+'</small></div>';});
+    list.innerHTML=h;list.style.display='block';
+  }
+  window.selectCity=function(id,name,prov){document.getElementById('citySearch').value=name;document.getElementById('destCityId').value=id;document.getElementById('kotaName').value=name;document.getElementById('cityList').style.display='none';var p=document.querySelector('input[name="provinsi"]');if(p)p.value=prov;};
+  window.checkOngkir=function(){
+    var destId=document.getElementById('destCityId').value,courier=document.getElementById('courierSelect').value,svcDiv=document.getElementById('shippingServices');
+    if(!destId||!courier){svcDiv.style.display='none';return;}
+    svcDiv.innerHTML='<div style="text-align:center;padding:12px;color:#9ca3af">Mengecek ongkir...</div>';svcDiv.style.display='block';
+    var fd=new FormData();fd.append('origin',S.originCityId);fd.append('destination',destId);fd.append('weight',S.weightGram||500);fd.append('courier',courier);
+    fetch('https://api.rajaongkir.com/starter/cost',{method:'POST',headers:{'key':S.apiKey},body:fd})
+    .then(function(r){return r.json();}).then(function(d){
+      if(!d.rajaongkir||!d.rajaongkir.results||!d.rajaongkir.results.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Layanan tidak tersedia</div>';return;}
+      var costs=d.rajaongkir.results[0].costs;if(!costs.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Tidak ada layanan</div>';return;}
+      var h='';costs.forEach(function(svc){var cost=svc.cost[0];h+='<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f3f4f6"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem"><input type="radio" name="shippingService" value="'+cost.value+'" onchange="pickShipping('+cost.value+',\''+courier.toUpperCase()+' '+svc.service+' ('+cost.etd+' hari)\')"> '+courier.toUpperCase()+' '+svc.service+'</label><div style="text-align:right"><div style="font-weight:600;color:var(--c)">Rp '+cost.value.toLocaleString('id-ID')+'</div><div style="font-size:.75rem;color:#9ca3af">'+cost.etd+' hari</div></div></div>';});
+      svcDiv.innerHTML=h;
+    }).catch(function(){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Gagal cek ongkir</div>';});
+  };
+  window.pickShipping=function(cost,desc){currentOngkir=cost;document.getElementById('ongkirAmount').value=cost;document.getElementById('shippingDesc').value=desc;updateTotal();};
+  window.selectWilayah=function(){
+    var sel=document.getElementById('wilayahSelect'),idx=parseInt(sel.value),info=document.getElementById('fallbackInfo');
+    if(isNaN(idx)){currentOngkir=0;info.style.display='none';updateTotal();return;}
+    var rate=S.fallbackRates[idx];currentOngkir=rate.ongkir;
+    document.getElementById('ongkirAmount').value=rate.ongkir;document.getElementById('shippingDesc').value=rate.wilayah+' ('+rate.estimasi+')';
+    info.innerHTML='<div class="ship-line"><span>Ongkir '+rate.wilayah+':</span><span class="ship-cost">Rp '+rate.ongkir.toLocaleString('id-ID')+'</span></div><div class="ship-line"><span>Estimasi:</span><span>'+rate.estimasi+'</span></div>';
+    info.style.display='block';updateTotal();
+  };
+  window.updateTotal=function(){
+    var qty=parseInt(document.querySelector('input[name="qty"]').value)||1;subtotal=C.productPrice*qty;
+    if(S.freeThreshold&&S.freeThreshold>0&&subtotal>=S.freeThreshold){currentOngkir=0;}
+    var total=subtotal+currentOngkir;
+    document.getElementById('subtotalDisplay').textContent='Rp '+subtotal.toLocaleString('id-ID');
+    document.getElementById('ongkirDisplay').textContent=currentOngkir?'Rp '+currentOngkir.toLocaleString('id-ID'):'Rp 0';
+    document.getElementById('totalDisplay').textContent='Rp '+total.toLocaleString('id-ID');
+  };
+  window.goStep=function(n){
+    if(n>1&&!validateStep(1))return;if(n>2&&!validateStep(2))return;
+    document.querySelectorAll('.step-panel').forEach(function(p){p.classList.remove('active');});
+    document.getElementById('step'+n).classList.add('active');
+    document.querySelectorAll('.step-item').forEach(function(s){var sn=parseInt(s.dataset.step);s.classList.remove('active','done');if(sn===n)s.classList.add('active');else if(sn<n)s.classList.add('done');});
+    document.getElementById('stepFill').style.width=((n-1)/2*100)+'%';
+    if(n===3)buildSummary();
+  };
+  function validateStep(n){
+    var panel=document.getElementById('step'+n),fields=panel.querySelectorAll('[required]'),ok=true;
+    fields.forEach(function(f){var grp=f.closest('.form-group');if(grp)grp.classList.remove('has-error');
+      if(f.type==='radio'){var checked=panel.querySelector('input[name="'+f.name+'"]:checked');if(!checked){if(grp)grp.classList.add('has-error');ok=false;}}
+      else if(!f.value.trim()){if(grp)grp.classList.add('has-error');ok=false;}
+      else if(f.pattern&&!new RegExp(f.pattern).test(f.value)){if(grp)grp.classList.add('has-error');ok=false;}
+    });
+    if(!ok){var first=panel.querySelector('.has-error');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});}return ok;
+  }
+  function buildSummary(){
+    var f=document.getElementById('orderForm'),fd=new FormData(f),qty=parseInt(fd.get('qty'))||1,total=subtotal+currentOngkir;
+    var h='<h3>Ringkasan Order</h3>';
+    h+='<div class="sum-row"><span class="lbl">Nama</span><span class="val">'+esc(fd.get('nama'))+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">WhatsApp</span><span class="val">'+esc(fd.get('wa'))+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Alamat</span><span class="val">'+esc(fd.get('alamat'))+'</span></div>';
+    if(fd.get('kecamatan'))h+='<div class="sum-row"><span class="lbl">Kecamatan</span><span class="val">'+esc(fd.get('kecamatan'))+'</span></div>';
+    var kota=fd.get('kota')||document.getElementById('kotaName').value;if(kota)h+='<div class="sum-row"><span class="lbl">Kota</span><span class="val">'+esc(kota)+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Produk</span><span class="val">'+esc(fd.get('produk'))+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Jumlah</span><span class="val">'+qty+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Subtotal</span><span class="val">Rp '+subtotal.toLocaleString('id-ID')+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Ongkir</span><span class="val">Rp '+currentOngkir.toLocaleString('id-ID')+'</span></div>';
+    h+='<div class="sum-row"><span class="lbl">Pembayaran</span><span class="val">'+esc(fd.get('metodeBayar'))+'</span></div>';
+    if(fd.get('catatan'))h+='<div class="sum-row"><span class="lbl">Catatan</span><span class="val">'+esc(fd.get('catatan'))+'</span></div>';
+    h+='<div class="sum-total"><span>TOTAL</span><span class="val">Rp '+total.toLocaleString('id-ID')+'</span></div>';
+    document.getElementById('orderSummary').innerHTML=h;
+  }
+  function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';}
+  function buildWaLink(name){var msg=C.waMessageTemplate.replace('{product}',C.productName).replace('{name}',name||'');return 'https://wa.me/'+C.waNumber+'?text='+encodeURIComponent(msg);}
+  document.getElementById('orderForm').addEventListener('submit',function(e){
+    e.preventDefault();if(!validateStep(1)||!validateStep(2))return;
+    var btn=document.getElementById('submitBtn'),successMsg=document.getElementById('successMsg'),errorMsg=document.getElementById('errorMsg');
+    var fd=new FormData(e.target),qty=parseInt(fd.get('qty'))||1,total=subtotal+currentOngkir;
+    var data={nama:fd.get('nama'),wa:fd.get('wa'),alamat:fd.get('alamat'),kecamatan:fd.get('kecamatan')||'',kota:fd.get('kota')||document.getElementById('kotaName').value||'',provinsi:fd.get('provinsi')||'',wilayah:document.getElementById('shippingDesc').value||'',produk:fd.get('produk'),qty:qty,ongkir:currentOngkir,total:total,metodeBayar:fd.get('metodeBayar'),catatan:fd.get('catatan')||'',lpSource:window.location.pathname};
+    btn.classList.add('loading');btn.disabled=true;successMsg.classList.remove('show');errorMsg.classList.remove('show');
+    fetch(C.webhookUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(function(){btn.classList.remove('loading');btn.disabled=false;successMsg.classList.add('show');document.getElementById('waLink').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">\uD83D\uDCF1 Chat CS via WhatsApp</a>';if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){fbq('track','Purchase',{value:total,currency:'IDR'});}e.target.reset();goStep(1);})
+    .catch(function(){btn.classList.remove('loading');btn.disabled=false;errorMsg.classList.add('show');document.getElementById('waFallback').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">\uD83D\uDCF1 Order via WhatsApp</a>';});
+  });
+})();
+</script>
+</body>
+</html>

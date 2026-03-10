@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Management Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>
+const ADMIN_CONFIG = {
+  password: "admin123",
+  webhookUrl: "https://script.google.com/macros/s/XXXXX/exec"
+};
+</script>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="admin-login" id="loginScreen">
+  <div class="login-box">
+    <h1>🔐 Dashboard Login</h1>
+    <p>Masukkan password untuk akses dashboard</p>
+    <input type="password" id="passInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Masuk</button>
+    <div class="login-error" id="loginErr">Password salah</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="admin-wrap" id="dashboard">
+  <div class="admin-header">
+    <h1>📦 Order Management</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="loadOrders()" style="padding:6px 12px;background:#dbeafe;border:1px solid #2563eb;border-radius:6px;cursor:pointer;font-size:.85rem;color:#2563eb">🔄 Refresh</button>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total Order</div></div>
+    <div class="stat-card pending"><div class="stat-num" id="statPending">0</div><div class="stat-label">Pending</div></div>
+    <div class="stat-card process"><div class="stat-num" id="statProcess">0</div><div class="stat-label">Diproses</div></div>
+    <div class="stat-card done"><div class="stat-num" id="statDone">0</div><div class="stat-label">Selesai</div></div>
+  </div>
+
+  <div class="admin-toolbar">
+    <input type="text" id="searchInput" placeholder="Cari nama / WA / produk..." oninput="filterOrders()">
+    <select id="statusFilter" onchange="filterOrders()">
+      <option value="">Semua Status</option>
+      <option value="Pending">🟡 Pending</option>
+      <option value="Diproses">🔵 Diproses</option>
+      <option value="Dikirim">📦 Dikirim</option>
+      <option value="Selesai">✅ Selesai</option>
+    </select>
+    <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+  </div>
+
+  <div class="orders-table-wrap">
+    <div id="loadingState" style="text-align:center;padding:40px;color:#9ca3af">Memuat data...</div>
+    <table class="orders-table" id="ordersTable" style="display:none">
+      <thead>
+        <tr><th>No</th><th>Tanggal</th><th>Nama</th><th>WA</th><th>Produk</th><th>Qty</th><th>Ongkir</th><th>Total</th><th>Bayar</th><th>Alamat</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody id="ordersBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState" style="display:none">Belum ada order</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var allOrders = [];
+
+  // Check session
+  if(localStorage.getItem('admin_logged_in')==='true'){showDashboard();}
+
+  window.doLogin = function(){
+    var pass = document.getElementById('passInput').value;
+    if(pass === ADMIN_CONFIG.password){
+      localStorage.setItem('admin_logged_in','true');
+      showDashboard();
+    } else {
+      var err = document.getElementById('loginErr');
+      err.style.display='block';
+      setTimeout(function(){err.style.display='none';},2000);
+    }
+  };
+
+  window.doLogout = function(){
+    localStorage.removeItem('admin_logged_in');
+    document.getElementById('dashboard').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+  };
+
+  function showDashboard(){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    loadOrders();
+  }
+
+  window.loadOrders = function(){
+    document.getElementById('loadingState').style.display='block';
+    document.getElementById('ordersTable').style.display='none';
+    document.getElementById('emptyState').style.display='none';
+
+    fetch(ADMIN_CONFIG.webhookUrl + '?action=get_orders')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success && d.orders){
+        allOrders = d.orders.reverse(); // newest first
+        updateStats();
+        renderOrders(allOrders);
+      } else {
+        document.getElementById('loadingState').innerHTML = '<span style="color:#dc2626">Gagal memuat: '+(d.error||'Unknown error')+'</span>';
+      }
+    })
+    .catch(function(err){
+      document.getElementById('loadingState').innerHTML = '<span style="color:#dc2626">Error koneksi: '+err.message+'<br><small>Pastikan URL webhook sudah benar dan GAS sudah di-deploy</small></span>';
+    });
+  };
+
+  function updateStats(){
+    var total=allOrders.length, pending=0, process=0, done=0;
+    allOrders.forEach(function(o){
+      var s = (o.status||'').toLowerCase();
+      if(s==='pending') pending++;
+      else if(s==='diproses') process++;
+      else if(s==='selesai'||s==='dikirim') done++;
+    });
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statProcess').textContent = process;
+    document.getElementById('statDone').textContent = done;
+  }
+
+  function renderOrders(orders){
+    document.getElementById('loadingState').style.display='none';
+    if(!orders.length){
+      document.getElementById('ordersTable').style.display='none';
+      document.getElementById('emptyState').style.display='block';
+      return;
+    }
+    document.getElementById('ordersTable').style.display='table';
+    document.getElementById('emptyState').style.display='none';
+    var html='';
+    orders.forEach(function(o,i){
+      var badge='badge-pending',statusLabel=o.status||'Pending';
+      var s=(o.status||'').toLowerCase();
+      if(s==='diproses') badge='badge-process';
+      else if(s==='dikirim') badge='badge-shipped';
+      else if(s==='selesai') badge='badge-done';
+      html += '<tr>';
+      html += '<td>'+(i+1)+'</td>';
+      html += '<td style="white-space:nowrap">'+(o.timestamp||'-')+'</td>';
+      html += '<td><strong>'+esc(o.nama||'')+'</strong></td>';
+      html += '<td><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank">'+esc(o.wa||'')+'</a></td>';
+      html += '<td>'+esc(o.produk||'')+'</td>';
+      html += '<td>'+(o.qty||1)+'</td>';
+      html += '<td>Rp '+(parseInt(o.ongkir)||0).toLocaleString('id-ID')+'</td>';
+      html += '<td><strong>Rp '+(parseInt(o.total)||0).toLocaleString('id-ID')+'</strong></td>';
+      html += '<td>'+esc(o.metodebayar||'')+'</td>';
+      html += '<td style="max-width:150px;font-size:.8rem">'+esc(o.alamat||'')+'</td>';
+      html += '<td><span class="badge '+badge+'">'+statusLabel+'</span></td>';
+      html += '<td><select class="status-select" onchange="updateStatus(\''+o.id+'\',this.value)">';
+      ['Pending','Diproses','Dikirim','Selesai'].forEach(function(st){
+        html += '<option value="'+st+'"'+(st===statusLabel?' selected':'')+'>'+st+'</option>';
+      });
+      html += '</select></td></tr>';
+    });
+    document.getElementById('ordersBody').innerHTML = html;
+  }
+
+  window.filterOrders = function(){
+    var q = document.getElementById('searchInput').value.toLowerCase();
+    var sf = document.getElementById('statusFilter').value;
+    var filtered = allOrders.filter(function(o){
+      var matchSearch = !q || (o.nama||'').toLowerCase().indexOf(q)>-1 || (o.wa||'').indexOf(q)>-1 || (o.produk||'').toLowerCase().indexOf(q)>-1;
+      var matchStatus = !sf || o.status===sf;
+      return matchSearch && matchStatus;
+    });
+    renderOrders(filtered);
+  };
+
+  window.updateStatus = function(id, status){
+    fetch(ADMIN_CONFIG.webhookUrl + '?action=update_status&id='+encodeURIComponent(id)+'&status='+encodeURIComponent(status))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        // Update local
+        allOrders.forEach(function(o){if(o.id===id) o.status=status;});
+        updateStats();
+        filterOrders();
+      } else {
+        alert('Gagal update: '+(d.error||''));
+      }
+    })
+    .catch(function(){alert('Error koneksi');});
+  };
+
+  window.exportCSV = function(){
+    if(!allOrders.length){alert('Tidak ada data');return;}
+    var headers = ['ID','Tanggal','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Status'];
+    var rows = [headers.join(',')];
+    allOrders.forEach(function(o){
+      rows.push([o.id,'"'+(o.timestamp||'')+'"','"'+esc(o.nama||'')+'"',o.wa,'"'+esc(o.alamat||'')+'"','"'+esc(o.kecamatan||'')+'"','"'+esc(o.kota||'')+'"','"'+esc(o.provinsi||'')+'"','"'+esc(o.wilayah||'')+'"','"'+esc(o.produk||'')+'"',o.qty,o.ongkir,o.total,o.metodebayar,'"'+esc(o.catatan||'')+'"',o.status].join(','));
+    });
+    var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'orders_'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();
+  };
+
+  function esc(s){return s?String(s).replace(/"/g,'""'):'';}
+  function cleanWa(w){return (w||'').replace(/[^0-9]/g,'').replace(/^0/,'62');}
+})();
+</script>
+</body>
+</html>
