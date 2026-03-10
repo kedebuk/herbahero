@@ -86,6 +86,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="card">
+    <div class="card-head">☁️ Cloudflare Custom Domain</div>
+    <div class="card-body">
+      <div class="info-box">
+        Opsional — untuk konek LP ke domain sendiri (misal: <code>produkku.com</code>) via Cloudflare Workers. Cara setup:
+        <ol>
+          <li>Buka <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener">Cloudflare → API Tokens → Create Token</a></li>
+          <li>Pilih template <strong>"Edit Cloudflare Workers"</strong></li>
+          <li>Tambah Zone Resource → Include All Zones (atau pilih domain spesifik)</li>
+          <li>Copy token → paste di bawah. Account ID ada di sidebar kanan Cloudflare Dashboard.</li>
+        </ol>
+      </div>
+      <br>
+      <div class="fg">
+        <label>Cloudflare API Token</label>
+        <input type="password" id="cfApiToken" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="fg">
+        <label>Account ID</label>
+        <input type="text" id="cfAccountId" placeholder="32 karakter hex dari Cloudflare Dashboard">
+        <div class="hint">Tersedia di halaman Cloudflare Dashboard → sidebar kanan</div>
+      </div>
+      <div id="cfStatusMsg" class="status"></div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btnCfTest">🔌 Test Cloudflare</button>
+        <button class="btn-primary" id="btnCfSave" style="background:#16a34a">💾 Simpan CF</button>
+      </div>
+      <div id="cfSavedBadge" class="saved-badge" style="margin-top:10px">✅ Cloudflare settings tersimpan</div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-head">🔗 Quick Links</div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
       <a href="/admin/pages.html" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ LP Manager</a>
@@ -167,6 +198,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     var el2 = el('statusMsg');
     el2.className = 'status' + (type ? ' on ' + type : '');
     el2.textContent = msg;
+  }
+
+  /* ── Cloudflare ── */
+  var cfT = localStorage.getItem('cf_token');
+  var cfA = localStorage.getItem('cf_account_id');
+  if (cfT) el('cfApiToken').value = cfT;
+  if (cfA) el('cfAccountId').value = cfA;
+
+  el('btnCfTest').addEventListener('click', function(){
+    var token = el('cfApiToken').value.trim();
+    var acct  = el('cfAccountId').value.trim();
+    if (!token || !acct) { showCF('er', 'Token dan Account ID wajib diisi.'); return; }
+    var btn = this; btn.disabled = true; btn.textContent = '⏳ Testing...';
+    fetch('https://api.cloudflare.com/client/v4/accounts/' + acct, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.success) throw new Error((d.errors||[{message:'Token tidak valid'}])[0].message);
+      showCF('ok', '✅ Terhubung! Account: ' + d.result.name);
+    })
+    .catch(function(e){ showCF('er', '❌ ' + e.message); })
+    .finally(function(){ btn.disabled = false; btn.textContent = '🔌 Test Cloudflare'; });
+  });
+
+  el('btnCfSave').addEventListener('click', function(){
+    var token = el('cfApiToken').value.trim();
+    var acct  = el('cfAccountId').value.trim();
+    if (!token || !acct) { showCF('er', 'Token dan Account ID wajib diisi.'); return; }
+    localStorage.setItem('cf_token', token);
+    localStorage.setItem('cf_account_id', acct);
+    el('cfSavedBadge').classList.add('on');
+    showCF('ok', '✅ Cloudflare settings tersimpan.');
+    setTimeout(function(){ el('cfSavedBadge').classList.remove('on'); }, 3000);
+  });
+
+  function showCF(type, msg) {
+    var s = el('cfStatusMsg');
+    s.className = 'status' + (type ? ' on ' + type : '');
+    s.textContent = msg;
   }
 
   function el(id){ return document.getElementById(id); }

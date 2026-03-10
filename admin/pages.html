@@ -188,7 +188,9 @@ tr:hover td{background:#fafafa}
       + '<td><div class="lp-name">' + esc(lp.name) + '</div>'
       + '<div class="lp-slug">/' + esc(lp.slug) + '</div></td>'
       + '<td><a class="url-link" href="' + prettyUrl + '" target="_blank" rel="noopener">'
-      + esc(customDomain + '/' + lp.slug) + ' ↗</a></td>'
+      + esc(customDomain + '/' + lp.slug) + ' ↗</a>'
+      + (lp.cfDomain ? '<br><a class="url-link" href="https://' + esc(lp.cfDomain) + '" target="_blank" rel="noopener" style="margin-top:3px">☁️ ' + esc(lp.cfDomain) + ' ↗</a>' : '')
+      + '</td>'
       + '<td>' + (isPublished
           ? '<span class="badge published">✅ Published</span>'
           : '<span class="badge draft">⬜ Draft</span>')
@@ -231,6 +233,12 @@ tr:hover td{background:#fafafa}
   window.deleteLp = function (slug, name) {
     if (!confirm('Hapus LP "' + name + '"?\n\nIni akan menghapus file HTML dan config dari GitHub. Tidak bisa di-undo.')) return;
 
+    /* Find LP config to check if CF domain is set */
+    var lpCfg = null;
+    for (var i = 0; i < allLPs.length; i++) {
+      if (allLPs[i].slug === slug) { lpCfg = allLPs[i]; break; }
+    }
+
     var token = localStorage.getItem(ST.TOKEN) || '';
     var base = ghBase();
 
@@ -258,6 +266,17 @@ tr:hover td{background:#fafafa}
       return Promise.all(ops);
     })
     .then(function () {
+      /* Delete Cloudflare Worker if CF domain was set */
+      if (lpCfg && lpCfg.cfDomain) {
+        var cfToken = localStorage.getItem('cf_token');
+        var cfAcct  = localStorage.getItem('cf_account_id');
+        if (cfToken && cfAcct) {
+          fetch('https://api.cloudflare.com/client/v4/accounts/' + cfAcct + '/workers/scripts/lp-' + slug, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + cfToken }
+          }).catch(function(){}); /* silently ignore CF errors */
+        }
+      }
       showToast('✅ LP "' + name + '" berhasil dihapus.', 'ok');
       allLPs = allLPs.filter(function (lp) { return lp.slug !== slug; });
       render(allLPs);

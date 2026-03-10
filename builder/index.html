@@ -112,6 +112,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <input type="text" id="bLpSlug" placeholder="angetpol">
         <div class="slug-preview">herbahero.my.id/<strong id="slugPreview">angetpol</strong></div>
       </div>
+      <div class="fg">
+        <label>Custom Domain <span style="font-weight:400;color:#9ca3af">(via Cloudflare)</span></label>
+        <input type="text" id="bCfDomain" placeholder="angetpol.com (opsional)">
+        <div class="hint">Domain harus sudah ada di Cloudflare. Setup token di <a href="/admin/settings.html" target="_blank" style="color:#2563eb">Settings →</a></div>
+      </div>
     </div>
   </div>
 
@@ -312,6 +317,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     if (d && !urlSlug) {  /* skip draft restore when in edit mode (loading from GitHub) */
       if (d.ln) { el('bLpName').value = d.ln; el('bLpName').dataset.prev = d.ln; }
       if (d.ls) { el('bLpSlug').value = d.ls; el('slugPreview').textContent = d.ls; }
+      if (d.cd) el('bCfDomain').value = d.cd;
       if (d.pn) el('bProductName').value = d.pn;
       if (d.pr) el('bPrice').value       = d.pr;
       if (d.px) el('bPixelId').value     = d.px;
@@ -500,7 +506,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   function saveDraft() {
     try {
       localStorage.setItem('lpb4', JSON.stringify({
-        ln: gv('bLpName'),      ls: gv('bLpSlug'),
+        ln: gv('bLpName'),      ls: gv('bLpSlug'),  cd: gv('bCfDomain'),
         pn: gv('bProductName'), pr: gv('bPrice'),
         px: gv('bPixelId'),     eo: gv('bEventOpen'),
         es: gv('bEventSubmit'), ct: gv('bCapiToken'),
@@ -889,10 +895,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           });
       })
       .then(function () {
+        var cfDomain = gv('bCfDomain').trim();
+        if (cfDomain) {
+          return deployCF(slug, cfDomain).catch(function (cfErr) {
+            return { cfError: cfErr.message };
+          });
+        }
+        return null;
+      })
+      .then(function (cfResult) {
         var owner = localStorage.getItem('gh_owner') || 'kedebuk';
         var repo  = localStorage.getItem('gh_repo')  || 'herbahero';
-        var liveUrl = 'https://' + owner + '.github.io/' + repo + '/' + slug;
-        showPub('ok', '✅ LP berhasil dipublish! <a href="' + liveUrl + '" target="_blank">Buka ' + liveUrl + ' →</a>');
+        var ghUrl = 'https://' + owner + '.github.io/' + repo + '/' + slug;
+        var cfDomain = gv('bCfDomain').trim();
+        if (cfResult && cfResult.cfError) {
+          showPub('ok', '✅ LP dipublish ke GitHub! <a href="' + ghUrl + '" target="_blank">Buka →</a>'
+            + '<br><span style="color:#b45309;font-size:.8rem">⚠️ CF gagal: ' + cfResult.cfError + ' — cek <a href="/admin/settings.html">Settings CF →</a></span>');
+        } else if (cfDomain && cfResult) {
+          showPub('ok', '✅ LP berhasil dipublish! <a href="https://' + cfDomain + '" target="_blank">Buka ' + cfDomain + ' →</a>'
+            + '<br><small style="opacity:.65">Backup: <a href="' + ghUrl + '" target="_blank" style="color:inherit">GitHub →</a></small>');
+        } else {
+          showPub('ok', '✅ LP berhasil dipublish! <a href="' + ghUrl + '" target="_blank">Buka ' + ghUrl + ' →</a>');
+        }
       })
       .catch(function (err) {
         showPub('er', '❌ Gagal publish: ' + err.message + '. Cek GitHub token di <a href="/admin/settings.html">Settings</a>.');
@@ -910,6 +934,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     var s = el('pubStatus');
     s.className = 'pub-status' + (type ? ' on ' + type : '');
     s.innerHTML = html;
+  }
+
+  /* ── Cloudflare Worker Deploy ── */
+  function deployCF(slug, domain) {
+    var cfToken  = localStorage.getItem('cf_token');
+    var cfAcct   = localStorage.getItem('cf_account_id');
+    if (!cfToken || !cfAcct) return Promise.reject(new Error('CF token belum diset di Settings'));
+
+    var workerName = 'lp-' + slug;
+    var cfBase = 'https://api.cloudflare.com/client/v4';
+    var workerScript = [
+      'addEventListener("fetch",function(e){',
+      '  e.respondWith(fetch("https://herbahero.my.id/' + slug + '"));',
+      '})'
+    ].join('\n');
+
+    showPub('in', '⏳ Deploy Cloudflare Worker...');
+    return fetch(cfBase + '/accounts/' + cfAcct + '/workers/scripts/' + workerName, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/javascript' },
+      body: workerScript
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.success) throw new Error('Worker gagal: ' + (d.errors||[{message:'unknown'}])[0].message);
+
+      showPub('in', '⏳ Menghubungkan domain ke Worker...');
+      return cfGetZoneId(domain, cfToken, cfBase);
+    })
+    .then(function (zoneId) {
+      return fetch(cfBase + '/accounts/' + cfAcct + '/workers/domains', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + cfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostname: domain, zone_id: zoneId, service: workerName, environment: 'production' })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.success) throw new Error('Connect domain gagal: ' + (d.errors||[{message:'unknown'}])[0].message);
+        return { domain: domain };
+      });
+    });
+  }
+
+  function cfGetZoneId(domain, token, cfBase) {
+    var parts = domain.split('.');
+    function tryIdx(i) {
+      if (i >= parts.length - 1) return Promise.reject(new Error('Zone untuk "' + domain + '" tidak ditemukan di Cloudflare'));
+      var candidate = parts.slice(i).join('.');
+      return fetch(cfBase + '/zones?name=' + candidate, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.success && d.result && d.result.length) return d.result[0].id;
+          return tryIdx(i + 1);
+        });
+    }
+    return tryIdx(0);
   }
 
   function buildConfig(slug, name) {
@@ -945,7 +1025,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       upsellText:    gv('bUpsellText'),
       upsellPrice:   parseInt(gv('bUpsellPrice')) || 0,
       submitBtn:     gv('bSubmitBtn') || 'Kirim Order Sekarang 🚀',
-      color:         gv('bColor') || '#2563eb'
+      color:         gv('bColor') || '#2563eb',
+      cfDomain:      gv('bCfDomain').trim()
     }, null, 2);
   }
 
@@ -982,6 +1063,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     el('bLpName').dataset.prev = cfg.name || '';
     el('bLpSlug').value = cfg.slug || '';
     el('slugPreview').textContent = cfg.slug || 'slug-lp';
+    if (cfg.cfDomain) el('bCfDomain').value = cfg.cfDomain;
 
     if (cfg.heroBase64) {
       heroBase64 = cfg.heroBase64;
