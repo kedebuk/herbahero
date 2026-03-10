@@ -40,9 +40,11 @@ const LP_CONFIG = {
   waMessageTemplate: "Halo, saya ingin order {product} atas nama {name}",
   themeColor: "#2563eb",
   shipping: {
-    provider: "rajaongkir",
-    apiKey: "YOUR_RAJAONGKIR_API_KEY",
-    originCityId: "501",
+    // provider: "rajaongkir_v2" → pakai RajaOngkir Collaborator (rajaongkir.komerce.id)
+    // provider: "fallback"       → pakai tabel statis (tanpa API)
+    provider: "rajaongkir_v2",
+    apiKey: "saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP",
+    originCityId: "501",          // ID kota asal pengiriman (501 = Surabaya di RO lama)
     couriers: ["jne","jnt","sicepat","pos"],
     weightGram: 500,
     fallbackRates: [
@@ -55,7 +57,12 @@ const LP_CONFIG = {
       {wilayah:"Papua & Maluku",ongkir:45000,estimasi:"7-14 hari"}
     ],
     freeThreshold: 0
-  }
+  },
+  scrollToCta: true,
+  countdownEnabled: false,
+  countdownMinutes: 30,
+  stockEnabled: false,
+  stockCount: 47
 };
 </script>
 </head>
@@ -78,7 +85,22 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   var _pvId=generateEventId();fbq('track','PageView',{},{eventID:_pvId});
   var _vcId=generateEventId();fbq('track','ViewContent',{content_name:LP_CONFIG.productName,value:LP_CONFIG.productPrice,currency:'IDR'},{eventID:_vcId});
 }
+/* --- UTM tracking --- */
+(function(){
+  var params=["utm_source","utm_medium","utm_campaign","utm_content","utm_term"];
+  var search=window.location.search;
+  params.forEach(function(p){
+    var m=search.match(new RegExp("[?&]"+p+"=([^&]+)"));
+    if(m) sessionStorage.setItem(p,decodeURIComponent(m[1]));
+  });
+})();
 </script>
+<style>
+.sticky-cta{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:none}
+.sticky-cta a{background:var(--c);color:#fff;padding:14px 32px;border-radius:999px;font-weight:700;font-size:1rem;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25);display:block;text-align:center}
+.sticky-cta a:hover{text-decoration:none;filter:brightness(1.1)}
+@media(min-width:769px){.sticky-cta{display:none!important}}
+</style>
 
 <section class="lp-hero"><img id="heroImg" src="" alt=""><div class="lp-hero-overlay"><h1 id="heroTitle"></h1><p id="heroSubtitle"></p></div></section>
 
@@ -91,6 +113,8 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
 <h2>Order Sekarang</h2>
 <p class="form-subtitle" id="formProductName"></p>
 <div class="price-display"><div class="price" id="priceDisplay"></div><div class="price-note">Harga spesial — stok terbatas</div></div>
+<div id="countdownBox" style="text-align:center;margin:8px 0;font-size:.9rem;color:#dc2626;font-weight:600;display:none">⏳ Penawaran berakhir dalam: <span id="countdown"></span></div>
+<div id="stockBox" style="text-align:center;margin:8px 0;font-size:.85rem;color:#92400e;background:#fef3c7;padding:8px 16px;border-radius:8px;display:none">⚠️ Stok tersisa: <strong id="stockCount">47</strong> pcs</div>
 
 <div class="step-indicator">
   <div class="step-connector"><div class="step-connector-fill" id="stepFill"></div></div>
@@ -174,12 +198,19 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
 </div>
 </section>
 
+<div class="sticky-cta" id="stickyCta"><a href="#orderSection" onclick="document.getElementById('stickyCta').style.display='none'">🛒 Order Sekarang</a></div>
+
 <footer class="lp-footer"><p id="footerText"></p></footer>
 
 <script>
 (function(){
   var C = LP_CONFIG, S = C.shipping||{};
-  var useApi = S.provider==='rajaongkir' && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
+  // Dukung kedua versi: "rajaongkir" (lama/deprecated) & "rajaongkir_v2" (Collaborator baru)
+  var useApi = (S.provider==='rajaongkir_v2' || S.provider==='rajaongkir')
+               && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
+  var RO_BASE = S.provider==='rajaongkir_v2'
+    ? 'https://rajaongkir.komerce.id'
+    : 'https://api.rajaongkir.com';
   var currentOngkir = 0, subtotal = 0;
   var cityCache = [];
 
@@ -219,20 +250,27 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   document.getElementById('productSelect').addEventListener('change', updateTotal);
 
   // Shipping mode
+  function showFallback(){
+    document.getElementById('rajaongkirMode').style.display='none';
+    document.getElementById('fallbackMode').style.display='block';
+    var ws = document.getElementById('wilayahSelect');
+    if(ws.options.length<=1){
+      (S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' — Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
+    }
+  }
+
   if(useApi){
     document.getElementById('rajaongkirMode').style.display='block';
     var cs = document.getElementById('courierSelect');
     S.couriers.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c.toUpperCase();cs.appendChild(o);});
     initCitySearch();
   } else {
-    document.getElementById('fallbackMode').style.display='block';
-    var ws = document.getElementById('wilayahSelect');
-    (S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' — Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
+    showFallback();
   }
 
   updateTotal();
 
-  // === City autocomplete (RajaOngkir) ===
+  // === City autocomplete (RajaOngkir Collaborator v2 / legacy) ===
   function initCitySearch(){
     var input = document.getElementById('citySearch');
     var list = document.getElementById('cityList');
@@ -244,92 +282,186 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
       timer = setTimeout(function(){ searchCity(q); }, 400);
     });
     input.addEventListener('blur', function(){setTimeout(function(){list.style.display='none';},200);});
+    input.addEventListener('focus', function(){
+      if(input.value.trim().length>=2) searchCity(input.value.trim());
+    });
   }
 
   function searchCity(q){
     var list = document.getElementById('cityList');
-    // If cached, filter from cache
-    if(cityCache.length>0){
-      renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));
-      return;
+    list.innerHTML='<div style="padding:10px 12px;color:#9ca3af;font-size:.85rem">🔍 Mencari...</div>';
+    list.style.display='block';
+
+    if(S.provider==='rajaongkir_v2'){
+      // === RajaOngkir Collaborator (baru) ===
+      fetch(RO_BASE+'/api/v1/destination?search='+encodeURIComponent(q), {
+        headers:{'key':S.apiKey}
+      })
+      .then(function(r){return r.json();})
+      .then(function(d){
+        // Response: {meta:{status,code,message}, data:[{id, label, city_name, province, ...}]}
+        // OR: {status, code, message, data: [...]} (depending on version)
+        var items = (d.data && Array.isArray(d.data)) ? d.data : [];
+        if(!items.length){
+          // Try legacy field if v2 returns old format
+          if(d.rajaongkir && d.rajaongkir.results) items = d.rajaongkir.results.map(function(c){
+            return {id:c.city_id, label:c.type+' '+c.city_name, city_name:c.city_name, province:c.province};
+          });
+        }
+        if(!items.length){list.style.display='none';return;}
+        renderCitiesV2(items);
+      })
+      .catch(function(){ showFallback(); list.style.display='none'; });
+
+    } else {
+      // === RajaOngkir Starter lama (deprecated — fallback ke cache) ===
+      if(cityCache.length>0){
+        renderCitiesLegacy(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));
+        return;
+      }
+      fetch(RO_BASE+'/starter/city', {headers:{'key':S.apiKey}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.rajaongkir&&d.rajaongkir.results){
+          cityCache = d.rajaongkir.results;
+          renderCitiesLegacy(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));
+        } else { showFallback(); list.style.display='none'; }
+      })
+      .catch(function(){ showFallback(); list.style.display='none'; });
     }
-    // Fetch all cities (starter plan)
-    fetch('https://api.rajaongkir.com/starter/city', {headers:{'key':S.apiKey}})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.rajaongkir&&d.rajaongkir.results){
-        cityCache = d.rajaongkir.results;
-        renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));
-      }
-    })
-    .catch(function(){
-      // API fail → switch to fallback
-      document.getElementById('rajaongkirMode').style.display='none';
-      document.getElementById('fallbackMode').style.display='block';
-      var ws=document.getElementById('wilayahSelect');
-      if(ws.options.length<=1){
-        (S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' — Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
-      }
-    });
   }
 
-  function renderCities(cities){
+  // Render hasil dari RajaOngkir Collaborator v2
+  function renderCitiesV2(items){
     var list = document.getElementById('cityList');
-    if(!cities.length){list.style.display='none';return;}
+    if(!items.length){list.style.display='none';return;}
     var h='';
-    cities.slice(0,20).forEach(function(c){
-      h+='<div style="padding:8px 12px;cursor:pointer;font-size:.9rem;border-bottom:1px solid #f3f4f6" onmousedown="selectCity(\''+c.city_id+'\',\''+c.type+' '+c.city_name+'\',\''+c.province+'\')" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#fff\'">'+c.type+' '+c.city_name+'<br><small style="color:#9ca3af">'+c.province+'</small></div>';
+    items.slice(0,25).forEach(function(c){
+      var label = c.label || ((c.subdistrict_name||'') + ', ' + (c.city_name||'') + ', ' + (c.province||''));
+      var cityName = c.city_name || label;
+      var prov = c.province || '';
+      var id = c.id || c.city_id || '';
+      h+='<div class="city-item" onmousedown="selectCityV2(\''+id+'\',\''+escAttr(label)+'\',\''+escAttr(prov)+'\')">'
+        +'<span>'+esc(label)+'</span>'
+        +'<small style="color:#9ca3af;display:block">'+esc(prov)+'</small>'
+        +'</div>';
     });
     list.innerHTML=h;
     list.style.display='block';
   }
 
-  window.selectCity = function(id,name,prov){
-    document.getElementById('citySearch').value=name;
-    document.getElementById('destCityId').value=id;
-    document.getElementById('kotaName').value=name;
+  // Render hasil dari RajaOngkir legacy
+  function renderCitiesLegacy(cities){
+    var list = document.getElementById('cityList');
+    if(!cities.length){list.style.display='none';return;}
+    var h='';
+    cities.slice(0,20).forEach(function(c){
+      h+='<div class="city-item" onmousedown="selectCityV2(\''+c.city_id+'\',\''+escAttr(c.type+' '+c.city_name)+'\',\''+escAttr(c.province)+'\')">'
+        +'<span>'+esc(c.type+' '+c.city_name)+'</span>'
+        +'<small style="color:#9ca3af;display:block">'+esc(c.province)+'</small>'
+        +'</div>';
+    });
+    list.innerHTML=h;
+    list.style.display='block';
+  }
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+  window.selectCityV2 = function(id, label, prov){
+    document.getElementById('citySearch').value = label;
+    document.getElementById('destCityId').value = id;
+    document.getElementById('kotaName').value = label;
     document.getElementById('cityList').style.display='none';
-    // Auto-fill provinsi in step 1
     var provInput = document.querySelector('input[name="provinsi"]');
-    if(provInput) provInput.value=prov;
+    if(provInput && prov) provInput.value = prov;
+    // Auto-trigger ongkir check kalau kurir sudah dipilih
+    var courier = document.getElementById('courierSelect').value;
+    if(courier) window.checkOngkir();
   };
+
+  // Backward compat
+  window.selectCity = window.selectCityV2;
 
   window.checkOngkir = function(){
     var destId = document.getElementById('destCityId').value;
     var courier = document.getElementById('courierSelect').value;
     var svcDiv = document.getElementById('shippingServices');
     if(!destId||!courier){svcDiv.style.display='none';return;}
-    svcDiv.innerHTML='<div style="text-align:center;padding:12px;color:#9ca3af">Mengecek ongkir...</div>';
+    svcDiv.innerHTML='<div style="text-align:center;padding:12px;color:#9ca3af;font-size:.9rem">⏳ Mengecek ongkir...</div>';
     svcDiv.style.display='block';
 
-    var formData = new FormData();
-    formData.append('origin', S.originCityId);
-    formData.append('destination', destId);
-    formData.append('weight', S.weightGram||500);
-    formData.append('courier', courier);
-
-    fetch('https://api.rajaongkir.com/starter/cost', {method:'POST',headers:{'key':S.apiKey},body:formData})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(!d.rajaongkir||!d.rajaongkir.results||!d.rajaongkir.results.length){
-        svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Layanan tidak tersedia untuk tujuan ini</div>';
-        return;
-      }
-      var costs = d.rajaongkir.results[0].costs;
-      if(!costs.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Tidak ada layanan tersedia</div>';return;}
-      var h='';
-      costs.forEach(function(svc){
-        var cost = svc.cost[0];
-        h+='<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f3f4f6">';
-        h+='<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem"><input type="radio" name="shippingService" value="'+cost.value+'" data-desc="'+courier.toUpperCase()+' '+svc.service+'" onchange="pickShipping('+cost.value+\',\\\''+courier.toUpperCase()+' '+svc.service+' ('+cost.etd+' hari)\\\')"> '+courier.toUpperCase()+' '+svc.service+'</label>';
-        h+='<div style="text-align:right"><div style="font-weight:600;color:var(--c)">Rp '+cost.value.toLocaleString('id-ID')+'</div><div style="font-size:.75rem;color:#9ca3af">'+cost.etd+' hari</div></div></div>';
+    if(S.provider==='rajaongkir_v2'){
+      // === RajaOngkir Collaborator v2 ===
+      fetch(RO_BASE+'/api/v1/calculate/domestic-cost', {
+        method:'POST',
+        headers:{'key':S.apiKey,'Content-Type':'application/json'},
+        body: JSON.stringify({
+          origin_city_id: S.originCityId,
+          destination_city_id: destId,
+          weight: S.weightGram||500,
+          courier: courier
+        })
+      })
+      .then(function(r){return r.json();})
+      .then(function(d){
+        // Response v2: {meta:{...}, data:{results:[{code,name,costs:[{service,cost:[{value,etd}]}]}]}}
+        var results = (d.data && d.data.results) ? d.data.results
+          : (d.rajaongkir && d.rajaongkir.results) ? d.rajaongkir.results  // fallback jika v2 kembalikan format lama
+          : [];
+        renderShippingServices(results, courier);
+      })
+      .catch(function(){
+        svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">❌ Gagal cek ongkir. Coba lagi atau pilih wilayah manual.</div>';
       });
-      svcDiv.innerHTML=h;
-    })
-    .catch(function(){
-      svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Gagal cek ongkir. Silakan coba lagi.</div>';
-    });
+
+    } else {
+      // === RajaOngkir Starter lama ===
+      var formData = new FormData();
+      formData.append('origin', S.originCityId);
+      formData.append('destination', destId);
+      formData.append('weight', S.weightGram||500);
+      formData.append('courier', courier);
+      fetch(RO_BASE+'/starter/cost', {method:'POST',headers:{'key':S.apiKey},body:formData})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var results = (d.rajaongkir&&d.rajaongkir.results) ? d.rajaongkir.results : [];
+        renderShippingServices(results, courier);
+      })
+      .catch(function(){
+        svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">❌ Gagal cek ongkir. Coba lagi.</div>';
+      });
+    }
   };
+
+  function renderShippingServices(results, courier){
+    var svcDiv = document.getElementById('shippingServices');
+    if(!results||!results.length){
+      svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">Layanan tidak tersedia untuk tujuan ini.</div>';
+      return;
+    }
+    var h='';
+    results.forEach(function(res){
+      var costs = res.costs||[];
+      costs.forEach(function(svc){
+        var cost = svc.cost&&svc.cost[0] ? svc.cost[0] : {value:0,etd:'-'};
+        var courierName = (res.code||courier).toUpperCase();
+        var desc = courierName+' '+svc.service+' ('+cost.etd+')';
+        h+='<div class="shipping-option">'
+          +'<label>'
+          +'<input type="radio" name="shippingService" value="'+cost.value+'" '
+          +'onchange="pickShipping('+cost.value+',\''+escAttr(desc)+'\')">'
+          +'<span class="svc-name">'+esc(courierName+' '+svc.service)+'</span>'
+          +'</label>'
+          +'<div class="svc-meta">'
+          +'<span class="svc-price">Rp '+cost.value.toLocaleString('id-ID')+'</span>'
+          +'<span class="svc-etd">'+esc(cost.etd)+' hari</span>'
+          +'</div>'
+          +'</div>';
+      });
+    });
+    svcDiv.innerHTML = h || '<div style="color:#9ca3af;font-size:.85rem;padding:8px">Tidak ada layanan tersedia.</div>';
+  }
 
   window.pickShipping = function(cost, desc){
     currentOngkir = cost;
@@ -464,7 +596,11 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
       produk:fd.get('produk'), qty:qty,
       ongkir:currentOngkir, total:total,
       metodeBayar:fd.get('metodeBayar'), catatan:fd.get('catatan')||'',
-      lpSource:window.location.pathname
+      lpSource:window.location.pathname,
+      utm_source:sessionStorage.getItem("utm_source")||"",
+      utm_medium:sessionStorage.getItem("utm_medium")||"",
+      utm_campaign:sessionStorage.getItem("utm_campaign")||"",
+      utm_content:sessionStorage.getItem("utm_content")||""
     };
     // Attach CAPI payload for server-side tracking via GAS
     if(C.pixelId&&C.pixelId!=='XXXXXXXXXXXXXXX'){
@@ -499,6 +635,50 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
       document.getElementById('waFallback').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">📱 Order via WhatsApp</a>';
     });
   });
+
+  /* === Sticky CTA with IntersectionObserver === */
+  if(C.scrollToCta!==false){
+    var stickyEl=document.getElementById('stickyCta');
+    var orderEl=document.getElementById('orderSection');
+    if(stickyEl&&orderEl&&'IntersectionObserver' in window){
+      var obs=new IntersectionObserver(function(entries){
+        stickyEl.style.display=entries[0].isIntersecting?'none':'block';
+      },{threshold:0.1});
+      obs.observe(orderEl);
+    }
+  }
+
+  /* === Countdown timer === */
+  if(C.countdownEnabled){
+    var cdBox=document.getElementById('countdownBox');
+    var cdSpan=document.getElementById('countdown');
+    if(cdBox&&cdSpan){
+      cdBox.style.display='block';
+      var cdKey='lp_cd_'+window.location.pathname;
+      var endTime=sessionStorage.getItem(cdKey);
+      if(!endTime){
+        endTime=Date.now()+(C.countdownMinutes||30)*60*1000;
+        sessionStorage.setItem(cdKey,endTime);
+      }
+      endTime=parseInt(endTime);
+      var cdInterval=setInterval(function(){
+        var diff=endTime-Date.now();
+        if(diff<=0){cdSpan.textContent='00:00';clearInterval(cdInterval);return;}
+        var m=Math.floor(diff/60000);var s=Math.floor((diff%60000)/1000);
+        cdSpan.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+      },1000);
+    }
+  }
+
+  /* === Stock counter === */
+  if(C.stockEnabled){
+    var stBox=document.getElementById('stockBox');
+    var stCount=document.getElementById('stockCount');
+    if(stBox&&stCount){
+      stBox.style.display='block';
+      stCount.textContent=C.stockCount||47;
+    }
+  }
 })();
 </script>
 </body>

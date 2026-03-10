@@ -5,36 +5,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LP Management — Landing Page Hub</title>
 <link rel="stylesheet" href="assets/style.css">
+<style>
+.hub-hero{background:linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#1e40af 100%);color:#fff;padding:64px 16px;text-align:center}
+.hub-hero h1{font-size:2.2rem;font-weight:800;margin-bottom:8px;letter-spacing:-.02em}
+.hub-hero .tagline{color:rgba(255,255,255,.75);font-size:1.05rem;margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto}
+.hub-hero .version-badge{display:inline-block;padding:4px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:999px;font-size:.75rem;color:rgba(255,255,255,.7);margin-bottom:20px}
+.hub-hero .hero-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.hub-hero .hero-links a{color:rgba(255,255,255,.6);font-size:.85rem;text-decoration:none;display:flex;align-items:center;gap:4px}
+.hub-hero .hero-links a:hover{color:#fff}
+.hub-cards{display:grid;gap:20px;padding:32px 16px;max-width:900px;margin:0 auto}
+@media(min-width:600px){.hub-cards{grid-template-columns:1fr 1fr}}
+.hub-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:box-shadow .2s,transform .15s;position:relative;overflow:hidden}
+.hub-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px)}
+.hub-card .card-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.hub-card .card-icon{font-size:2rem;margin-bottom:12px}
+.hub-card h3{font-size:1.15rem;font-weight:700;margin-bottom:6px;color:#111827}
+.hub-card p{font-size:.9rem;color:#6b7280;margin-bottom:16px;line-height:1.5}
+.setup-section{max-width:700px;margin:0 auto;padding:40px 16px}
+.setup-section h2{font-size:1.3rem;font-weight:700;margin-bottom:20px;text-align:center;color:#111827}
+.setup-steps{list-style:none;padding:0;counter-reset:setup}
+.setup-step{display:flex;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid #f3f4f6;counter-increment:setup}
+.setup-step:last-child{border-bottom:none}
+.setup-step .step-num{width:32px;height:32px;border-radius:50%;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.setup-step .step-body h4{font-size:.95rem;font-weight:600;color:#1f2937;margin-bottom:2px}
+.setup-step .step-body p{font-size:.85rem;color:#6b7280}
+.stack-section{background:#f9fafb;padding:40px 16px}
+.stack-section h2{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:24px;color:#111827}
+.stack-grid{display:grid;gap:16px;max-width:800px;margin:0 auto;grid-template-columns:repeat(2,1fr)}
+@media(min-width:600px){.stack-grid{grid-template-columns:repeat(4,1fr)}}
+.stack-item{text-align:center;padding:20px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px}
+.stack-item .stack-icon{font-size:2rem;margin-bottom:8px}
+.stack-item h4{font-size:.85rem;font-weight:700;color:#111827;margin-bottom:4px}
+.stack-item p{font-size:.75rem;color:#6b7280}
+</style>
 </head>
 <body>
-<header class="site-header">
-  <h1>🚀 Landing Page Hub</h1>
-  <p>Kelola semua landing page produk dari satu tempat</p>
-</header>
 
-<div class="card-grid">
-  <div class="card">
+<div class="hub-hero">
+  <div class="version-badge">v2.0 — Open Source</div>
+  <h1>LP Management Hub</h1>
+  <p class="tagline">Platform LP Management untuk COD + Meta Ads — Buat, kelola, dan monitor landing page produk dari satu tempat.</p>
+  <div class="hero-links">
+    <a href="https://github.com/kedebuk/herbahero" target="_blank" rel="noopener">GitHub ↗</a>
+    <a href="admin/settings.html">Settings</a>
+  </div>
+</div>
+
+<div class="hub-cards">
+  <div class="hub-card">
+    <div class="card-accent" style="background:linear-gradient(90deg,#2563eb,#7c3aed)"></div>
     <div class="card-icon">🛠️</div>
     <h3>LP Builder</h3>
     <p>Buat landing page baru. Upload foto, isi config, publish langsung ke website.</p>
     <a href="builder/" class="btn">Buka Builder →</a>
   </div>
 
-  <div class="card">
+  <div class="hub-card">
+    <div class="card-accent" style="background:linear-gradient(90deg,#059669,#10b981)"></div>
     <div class="card-icon">📄</div>
     <h3>LP Manager</h3>
     <p>Kelola semua landing page yang sudah dibuat. Edit, lihat, atau hapus LP kapan saja.</p>
     <a href="admin/pages.html" class="btn">Buka LP Manager →</a>
   </div>
 
-  <div class="card">
+  <div class="hub-card">
+    <div class="card-accent" style="background:linear-gradient(90deg,#f59e0b,#ef4444)"></div>
     <div class="card-icon">📊</div>
     <h3>Dashboard Order</h3>
     <p>Lihat dan kelola semua order yang masuk. Update status, export CSV, search order.</p>
     <a href="admin/" class="btn">Buka Dashboard →</a>
   </div>
 
-  <div class="card">
+  <div class="hub-card">
+    <div class="card-accent" style="background:linear-gradient(90deg,#6b7280,#374151)"></div>
     <div class="card-icon">⚙️</div>
     <h3>Settings</h3>
     <p>Setup GitHub Token, Facebook Pixel &amp; CAPI, GAS Webhook URL, dan konfigurasi lainnya.</p>
@@ -42,18 +85,75 @@
   </div>
 </div>
 
-<div style="max-width:700px;margin:0 auto;padding:32px 16px">
-  <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:12px">📋 Cara Publish LP Baru</h2>
-  <ol style="font-size:.9rem;color:#4b5563;line-height:1.8;padding-left:20px">
-    <li><strong>Setup sekali</strong> → Buka Settings → Masukkan GitHub Token</li>
-    <li><strong>Buka Builder</strong> → Isi Nama LP + Slug + Upload foto + Konfigurasi form</li>
-    <li><strong>Klik "Publish ke Website"</strong> → LP langsung live di herbahero.my.id/[slug]</li>
-    <li><strong>Kelola di LP Manager</strong> → Edit, preview, atau hapus LP yang sudah ada</li>
+<div class="setup-section">
+  <h2>Quick Setup — 5 Langkah Mulai</h2>
+  <ol class="setup-steps">
+    <li class="setup-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Setup GitHub Token</h4>
+        <p>Buka Settings → Masukkan GitHub Personal Access Token untuk publish LP ke repo.</p>
+      </div>
+    </li>
+    <li class="setup-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Setup CAPI &amp; Webhook</h4>
+        <p>Paste Facebook CAPI Token dan GAS Webhook URL di Settings untuk tracking &amp; order management.</p>
+      </div>
+    </li>
+    <li class="setup-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Buat LP Pertama</h4>
+        <p>Buka Builder → Upload foto, isi nama produk, harga, benefit, dan konfigurasi lainnya → Publish.</p>
+      </div>
+    </li>
+    <li class="setup-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Test Order</h4>
+        <p>Buka LP yang sudah dibuat → Isi form order → Cek Dashboard apakah order masuk.</p>
+      </div>
+    </li>
+    <li class="setup-step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Go Live!</h4>
+        <p>Pasang URL LP di Meta Ads → Monitor order di Dashboard → Scale iklan yang profitable.</p>
+      </div>
+    </li>
   </ol>
 </div>
 
+<div class="stack-section">
+  <h2>Bagaimana Ini Bekerja?</h2>
+  <div class="stack-grid">
+    <div class="stack-item">
+      <div class="stack-icon">🌐</div>
+      <h4>GitHub Pages</h4>
+      <p>Hosting gratis, fast, SSL otomatis</p>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">📊</div>
+      <h4>Google Apps Script</h4>
+      <p>Backend order &amp; CAPI server-side</p>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">📱</div>
+      <h4>Meta Pixel + CAPI</h4>
+      <p>Tracking pixel &amp; server event</p>
+    </div>
+    <div class="stack-item">
+      <div class="stack-icon">💬</div>
+      <h4>WhatsApp</h4>
+      <p>Follow-up order via WA</p>
+    </div>
+  </div>
+</div>
+
 <footer class="lp-footer">
-  <p>&copy; 2026 LP Management Hub</p>
+  <p>&copy; 2026 LP Management Hub — <a href="https://github.com/kedebuk/herbahero" style="color:#9ca3af" target="_blank" rel="noopener">GitHub</a></p>
 </footer>
 </body>
 </html>

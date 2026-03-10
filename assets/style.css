@@ -179,3 +179,62 @@ img{max-width:100%;height:auto;display:block}a{color:var(--c);text-decoration:no
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--c);background:var(--cl)}
 .drop-zone p{font-size:.85rem;color:var(--g5)}.drop-zone .icon{font-size:2rem;margin-bottom:8px}
 .img-preview{max-height:120px;margin:8px auto 0;border-radius:var(--r)}
+
+/* SKELETON LOADING */
+.skeleton{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--r)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-text{height:14px;margin-bottom:8px;border-radius:4px}.skeleton-text.w-60{width:60%}.skeleton-text.w-40{width:40%}.skeleton-text.w-80{width:80%}
+.skeleton-row{display:flex;gap:12px;padding:16px;border-bottom:1px solid var(--g2);align-items:center}
+.skeleton-circle{width:36px;height:36px;border-radius:50%;flex-shrink:0}
+
+/* BADGE DRAFT */
+.badge-draft{background:var(--g2);color:var(--g6)}
+
+/* BTN VARIANTS */
+.btn-sm{padding:6px 14px !important;font-size:.8rem !important}
+.btn-ghost{background:transparent !important;color:var(--g7) !important;border:1px solid var(--g4) !important}
+.btn-ghost:hover{background:var(--g2) !important;color:var(--g8) !important}
+.btn-danger{background:var(--err) !important;color:#fff !important;border:none !important}
+.btn-danger:hover{background:#b91c1c !important}
+.card .btn-outline{background:transparent;color:var(--c);border:1px solid var(--c)}
+.card .btn-outline:hover{background:var(--c);color:#fff}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.modal-overlay.open{opacity:1;visibility:visible}
+.modal-box{background:#fff;border-radius:var(--rl);box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:scale(.95);transition:transform .2s;padding:24px}
+.modal-overlay.open .modal-box{transform:scale(1)}
+.modal-box h3{font-size:1.1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--g5);padding:0;line-height:1}.modal-close:hover{color:var(--g8)}
+.modal-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--g2);font-size:.9rem}
+.modal-row:last-child{border-bottom:none}
+.modal-row .lbl{color:var(--g6)}.modal-row .val{font-weight:600;text-align:right;max-width:60%;word-break:break-word}
+
+/* TOAST (top-right) */
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--r);font-size:.9rem;font-weight:500;color:#fff;z-index:1100;transform:translateX(120%);transition:transform .3s;max-width:360px;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.toast.show{transform:translateX(0)}
+.toast-success{background:var(--ok)}.toast-error{background:var(--err)}.toast-info{background:var(--g8)}
+
+/* RESPONSIVE IMPROVEMENTS */
+@media(max-width:480px){
+  .site-header{padding:32px 12px}
+  .card-grid{padding:20px 12px}
+  .admin-toolbar{padding:0 12px 12px}
+  .orders-table-wrap{padding:0 12px 12px}
+  .stats-row{padding:12px}
+}
+
+/* ONGKIR CALCULATOR */
+.city-item{padding:9px 12px;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f3f4f6;transition:background .15s}
+.city-item:hover,.city-item:active{background:#dbeafe}
+.city-item:last-child{border-bottom:none}
+.city-item small{font-size:.75rem;color:#9ca3af;display:block;margin-top:2px}
+.shipping-option{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-bottom:1px solid #f3f4f6;transition:background .15s}
+.shipping-option:hover{background:#f0f9ff}
+.shipping-option:last-child{border-bottom:none}
+.shipping-option label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;flex:1}
+.shipping-option label input[type=radio]{accent-color:var(--c);width:16px;height:16px;flex-shrink:0}
+.svc-name{font-weight:500}
+.svc-meta{text-align:right;flex-shrink:0;margin-left:12px}
+.svc-price{display:block;font-weight:700;color:var(--c);font-size:.9rem}
+.svc-etd{display:block;font-size:.75rem;color:#9ca3af;margin-top:1px}

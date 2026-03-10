@@ -49,6 +49,8 @@ tr:hover td{background:#fafafa}
 .btn-edit:hover{background:#dbeafe}
 .btn-view{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
 .btn-view:hover{background:#dcfce7}
+.btn-copy{background:#fefce8;color:#a16207;border-color:#fde68a}
+.btn-copy:hover{background:#fef9c3}
 .btn-del{background:#fff;color:#dc2626;border-color:#fca5a5}
 .btn-del:hover{background:#fee2e2}
 .btn-del:disabled{opacity:.4;cursor:not-allowed}
@@ -61,6 +63,11 @@ tr:hover td{background:#fafafa}
 .toast.on{display:block}
 .toast.ok{background:#16a34a}
 .toast.er{background:#dc2626}
+/* Skeleton loading */
+.skeleton{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-row{display:flex;gap:16px;padding:16px 14px;border-bottom:1px solid #f3f4f6;align-items:center}
+.skel-bar{height:14px;border-radius:4px}
 @media(max-width:640px){
   .stats-row{display:none}
   th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none}
@@ -72,7 +79,7 @@ tr:hover td{background:#fafafa}
 
 <div class="topbar">
   <div class="topbar-left">
-    <a href="../" class="back-link">← Hub</a>
+    <a href="../" class="back-link">&larr; Hub</a>
     <h1>📄 LP Manager</h1>
   </div>
   <div class="topbar-right">
@@ -162,6 +169,7 @@ tr:hover td{background:#fafafa}
 
     if (!lps.length) {
       html += '<div class="empty-state">'
+        + '<div style="font-size:2.5rem;margin-bottom:12px">📄</div>'
         + '<h3>Belum ada LP</h3>'
         + '<p>Buat landing page pertama kamu dan publish langsung ke website.</p>'
         + '<a href="/builder/">+ Buat LP Baru →</a>'
@@ -199,6 +207,7 @@ tr:hover td{background:#fafafa}
       + '<td class="actions">'
       + '<a class="btn-act btn-edit" href="/builder/?slug=' + esc(lp.slug) + '">✏️ Edit</a>'
       + '<a class="btn-act btn-view" href="' + prettyUrl + '" target="_blank" rel="noopener">👁 Lihat</a>'
+      + '<button class="btn-act btn-copy" onclick="copyUrl(\'' + esc(prettyUrl) + '\')" title="Copy URL">📋 Copy</button>'
       + '<button class="btn-act btn-del" onclick="deleteLp(\'' + esc(lp.slug) + '\',\'' + esc(lp.name) + '\')" title="Hapus LP">🗑</button>'
       + '</td></tr>';
   }
@@ -208,8 +217,22 @@ tr:hover td{background:#fafafa}
   }
 
   function renderSkeleton() {
-    return '<div class="card"><div class="card-head"><h2>Daftar Landing Page</h2></div>'
-      + '<table><tbody><tr class="loading-row"><td colspan="5">⏳ Memuat LP dari GitHub...</td></tr></tbody></table></div>';
+    var rows = '';
+    for (var i = 0; i < 4; i++) {
+      var w1 = [60, 45, 70, 55][i];
+      var w2 = [40, 55, 35, 50][i];
+      rows += '<div class="skel-row">'
+        + '<div class="skeleton skel-bar" style="width:' + w1 + '%;height:14px"></div>'
+        + '<div class="skeleton skel-bar" style="width:' + w2 + '%;height:12px"></div>'
+        + '<div class="skeleton skel-bar" style="width:60px;height:22px;border-radius:12px"></div>'
+        + '</div>';
+    }
+    return '<div class="stats-row">'
+      + '<div class="stat-card"><div class="skeleton skel-bar" style="width:40px;height:28px;margin-bottom:6px"></div><div class="skeleton skel-bar" style="width:60px;height:12px"></div></div>'
+      + '<div class="stat-card"><div class="skeleton skel-bar" style="width:40px;height:28px;margin-bottom:6px"></div><div class="skeleton skel-bar" style="width:60px;height:12px"></div></div>'
+      + '<div class="stat-card"><div class="skeleton skel-bar" style="width:40px;height:28px;margin-bottom:6px"></div><div class="skeleton skel-bar" style="width:60px;height:12px"></div></div>'
+      + '</div>'
+      + '<div class="card"><div class="card-head"><h2>Daftar Landing Page</h2></div>' + rows + '</div>';
   }
 
   function renderNoToken() {
@@ -228,6 +251,31 @@ tr:hover td{background:#fafafa}
     var tbody = document.getElementById('lpTableBody');
     if (tbody) tbody.innerHTML = filtered.map(rowHTML).join('') || '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada hasil</td></tr>';
   };
+
+  /* ── Copy URL ── */
+  window.copyUrl = function (url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        showToast('✅ URL berhasil di-copy!', 'ok');
+      }).catch(function () {
+        fallbackCopy(url);
+      });
+    } else {
+      fallbackCopy(url);
+    }
+  };
+
+  function fallbackCopy(url) {
+    var inp = document.createElement('input');
+    inp.value = url;
+    inp.style.position = 'fixed';
+    inp.style.opacity = '0';
+    document.body.appendChild(inp);
+    inp.select();
+    document.execCommand('copy');
+    document.body.removeChild(inp);
+    showToast('✅ URL berhasil di-copy!', 'ok');
+  }
 
   /* ── Delete LP ── */
   window.deleteLp = function (slug, name) {

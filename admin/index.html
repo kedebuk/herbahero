@@ -35,11 +35,12 @@ const ADMIN_CONFIG = {
     </div>
   </div>
 
-  <div class="stats-row">
+  <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
     <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total Order</div></div>
     <div class="stat-card pending"><div class="stat-num" id="statPending">0</div><div class="stat-label">Pending</div></div>
     <div class="stat-card process"><div class="stat-num" id="statProcess">0</div><div class="stat-label">Diproses</div></div>
     <div class="stat-card done"><div class="stat-num" id="statDone">0</div><div class="stat-label">Selesai</div></div>
+    <div class="stat-card" style="border-left:3px solid #2563eb"><div class="stat-num" id="statRevenue" style="color:#2563eb;font-size:1.2rem">Rp 0</div><div class="stat-label">Total Revenue</div></div>
   </div>
 
   <div class="admin-toolbar">
@@ -51,6 +52,8 @@ const ADMIN_CONFIG = {
       <option value="Dikirim">📦 Dikirim</option>
       <option value="Selesai">✅ Selesai</option>
     </select>
+    <input type="date" id="dateFrom" onchange="filterOrders()" title="Dari tanggal" style="max-width:150px">
+    <input type="date" id="dateTo" onchange="filterOrders()" title="Sampai tanggal" style="max-width:150px">
     <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
   </div>
 
@@ -58,17 +61,33 @@ const ADMIN_CONFIG = {
     <div id="loadingState" style="text-align:center;padding:40px;color:#9ca3af">Memuat data...</div>
     <table class="orders-table" id="ordersTable" style="display:none">
       <thead>
-        <tr><th>No</th><th>Tanggal</th><th>Nama</th><th>WA</th><th>Produk</th><th>Qty</th><th>Ongkir</th><th>Total</th><th>Bayar</th><th>Alamat</th><th>Status</th><th>Aksi</th></tr>
+        <tr><th>No</th><th>Tanggal</th><th>Nama</th><th>WA</th><th>Produk</th><th>Qty</th><th>Total</th><th>Bayar</th><th>Status</th><th>Aksi</th></tr>
       </thead>
       <tbody id="ordersBody"></tbody>
     </table>
-    <div class="empty-state" id="emptyState" style="display:none">Belum ada order</div>
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div style="font-size:3rem;margin-bottom:12px">📭</div>
+      <h3 style="font-size:1rem;color:#6b7280;margin-bottom:4px">Belum ada order</h3>
+      <p style="font-size:.88rem;color:#9ca3af">Order dari landing page akan muncul di sini.</p>
+    </div>
   </div>
 </div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal-box">
+    <h3>Detail Order <button class="modal-close" onclick="closeModal()">&times;</button></h3>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
 (function(){
   var allOrders = [];
+  var filteredOrders = [];
 
   // Check session
   if(localStorage.getItem('admin_logged_in')==='true'){showDashboard();}
@@ -108,7 +127,7 @@ const ADMIN_CONFIG = {
       if(d.success && d.orders){
         allOrders = d.orders.reverse(); // newest first
         updateStats();
-        renderOrders(allOrders);
+        filterOrders();
       } else {
         document.getElementById('loadingState').innerHTML = '<span style="color:#dc2626">Gagal memuat: '+(d.error||'Unknown error')+'</span>';
       }
@@ -119,17 +138,19 @@ const ADMIN_CONFIG = {
   };
 
   function updateStats(){
-    var total=allOrders.length, pending=0, process=0, done=0;
+    var total=allOrders.length, pending=0, process=0, done=0, revenue=0;
     allOrders.forEach(function(o){
       var s = (o.status||'').toLowerCase();
       if(s==='pending') pending++;
       else if(s==='diproses') process++;
       else if(s==='selesai'||s==='dikirim') done++;
+      revenue += parseInt(o.total)||0;
     });
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statPending').textContent = pending;
     document.getElementById('statProcess').textContent = process;
     document.getElementById('statDone').textContent = done;
+    document.getElementById('statRevenue').textContent = 'Rp '+revenue.toLocaleString('id-ID');
   }
 
   function renderOrders(orders){
@@ -148,19 +169,17 @@ const ADMIN_CONFIG = {
       if(s==='diproses') badge='badge-process';
       else if(s==='dikirim') badge='badge-shipped';
       else if(s==='selesai') badge='badge-done';
-      html += '<tr>';
+      html += '<tr style="cursor:pointer" onclick="showOrderDetail('+i+')">';
       html += '<td>'+(i+1)+'</td>';
       html += '<td style="white-space:nowrap">'+(o.timestamp||'-')+'</td>';
       html += '<td><strong>'+esc(o.nama||'')+'</strong></td>';
-      html += '<td><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank">'+esc(o.wa||'')+'</a></td>';
+      html += '<td><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank" onclick="event.stopPropagation()">'+esc(o.wa||'')+'</a></td>';
       html += '<td>'+esc(o.produk||'')+'</td>';
       html += '<td>'+(o.qty||1)+'</td>';
-      html += '<td>Rp '+(parseInt(o.ongkir)||0).toLocaleString('id-ID')+'</td>';
       html += '<td><strong>Rp '+(parseInt(o.total)||0).toLocaleString('id-ID')+'</strong></td>';
-      html += '<td>'+esc(o.metodebayar||'')+'</td>';
-      html += '<td style="max-width:150px;font-size:.8rem">'+esc(o.alamat||'')+'</td>';
+      html += '<td>'+esc(o.metodebayar||o.metodeBayar||'')+'</td>';
       html += '<td><span class="badge '+badge+'">'+statusLabel+'</span></td>';
-      html += '<td><select class="status-select" onchange="updateStatus(\''+o.id+'\',this.value)">';
+      html += '<td><select class="status-select" onclick="event.stopPropagation()" onchange="updateStatus(\''+o.id+'\',this.value)">';
       ['Pending','Diproses','Dikirim','Selesai'].forEach(function(st){
         html += '<option value="'+st+'"'+(st===statusLabel?' selected':'')+'>'+st+'</option>';
       });
@@ -172,36 +191,123 @@ const ADMIN_CONFIG = {
   window.filterOrders = function(){
     var q = document.getElementById('searchInput').value.toLowerCase();
     var sf = document.getElementById('statusFilter').value;
-    var filtered = allOrders.filter(function(o){
+    var dateFrom = document.getElementById('dateFrom').value;
+    var dateTo = document.getElementById('dateTo').value;
+
+    filteredOrders = allOrders.filter(function(o){
       var matchSearch = !q || (o.nama||'').toLowerCase().indexOf(q)>-1 || (o.wa||'').indexOf(q)>-1 || (o.produk||'').toLowerCase().indexOf(q)>-1;
       var matchStatus = !sf || o.status===sf;
-      return matchSearch && matchStatus;
+      var matchDate = true;
+      if(dateFrom || dateTo){
+        var orderDate = parseOrderDate(o.timestamp||'');
+        if(orderDate){
+          if(dateFrom){
+            var from = new Date(dateFrom); from.setHours(0,0,0,0);
+            if(orderDate < from) matchDate = false;
+          }
+          if(dateTo){
+            var to = new Date(dateTo); to.setHours(23,59,59,999);
+            if(orderDate > to) matchDate = false;
+          }
+        }
+      }
+      return matchSearch && matchStatus && matchDate;
     });
-    renderOrders(filtered);
+    renderOrders(filteredOrders);
   };
+
+  function parseOrderDate(ts){
+    if(!ts) return null;
+    var d = new Date(ts);
+    if(!isNaN(d.getTime())) return d;
+    // Indonesian format "DD/MM/YYYY HH:mm:ss"
+    var m = ts.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+    return null;
+  }
+
+  /* Order detail modal */
+  window.showOrderDetail = function(idx){
+    var o = filteredOrders[idx];
+    if(!o) return;
+    var h = '';
+    var fields = [
+      ['ID Order', o.id||'-'],
+      ['Tanggal', o.timestamp||'-'],
+      ['Nama', o.nama||'-'],
+      ['WhatsApp', o.wa||'-'],
+      ['Alamat', o.alamat||'-'],
+      ['Kecamatan', o.kecamatan||'-'],
+      ['Kota', o.kota||'-'],
+      ['Provinsi', o.provinsi||'-'],
+      ['Wilayah', o.wilayah||'-'],
+      ['Produk', o.produk||'-'],
+      ['Qty', ''+(o.qty||1)],
+      ['Ongkir', 'Rp '+(parseInt(o.ongkir)||0).toLocaleString('id-ID')],
+      ['Total', 'Rp '+(parseInt(o.total)||0).toLocaleString('id-ID')],
+      ['Pembayaran', o.metodebayar||o.metodeBayar||'-'],
+      ['Catatan', o.catatan||'-'],
+      ['LP Source', o.lpsource||o.lpSource||'-'],
+      ['UTM Source', o.utm_source||'-'],
+      ['UTM Medium', o.utm_medium||'-'],
+      ['UTM Campaign', o.utm_campaign||'-'],
+      ['Status', o.status||'Pending']
+    ];
+    fields.forEach(function(f){
+      if(f[1] && f[1]!=='-'){
+        h += '<div class="modal-row"><span class="lbl">'+f[0]+'</span><span class="val">'+esc(f[1])+'</span></div>';
+      }
+    });
+    h += '<div style="margin-top:16px;text-align:center"><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank" style="display:inline-block;padding:10px 20px;background:#25d366;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:.9rem">💬 Chat via WhatsApp</a></div>';
+    document.getElementById('modalContent').innerHTML = h;
+    document.getElementById('orderModal').classList.add('open');
+  };
+
+  window.closeModal = function(){
+    document.getElementById('orderModal').classList.remove('open');
+  };
+
+  // Escape key closes modal
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape') closeModal();
+  });
+
+  // Click overlay to close
+  document.getElementById('orderModal').addEventListener('click', function(e){
+    if(e.target===this) closeModal();
+  });
 
   window.updateStatus = function(id, status){
     fetch(ADMIN_CONFIG.webhookUrl + '?action=update_status&id='+encodeURIComponent(id)+'&status='+encodeURIComponent(status))
     .then(function(r){return r.json();})
     .then(function(d){
       if(d.success){
-        // Update local
         allOrders.forEach(function(o){if(o.id===id) o.status=status;});
         updateStats();
         filterOrders();
+        showToast('Status berhasil diupdate ke "'+status+'"', 'toast-success');
       } else {
-        alert('Gagal update: '+(d.error||''));
+        showToast('Gagal update: '+(d.error||''), 'toast-error');
       }
     })
-    .catch(function(){alert('Error koneksi');});
+    .catch(function(){showToast('Error koneksi', 'toast-error');});
   };
+
+  /* Toast notification */
+  function showToast(msg, cls){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast '+(cls||'toast-info')+' show';
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function(){t.classList.remove('show');}, 3000);
+  }
 
   window.exportCSV = function(){
     if(!allOrders.length){alert('Tidak ada data');return;}
-    var headers = ['ID','Tanggal','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Status'];
+    var headers = ['ID','Tanggal','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Status','UTM_Source','UTM_Medium','UTM_Campaign'];
     var rows = [headers.join(',')];
     allOrders.forEach(function(o){
-      rows.push([o.id,'"'+(o.timestamp||'')+'"','"'+esc(o.nama||'')+'"',o.wa,'"'+esc(o.alamat||'')+'"','"'+esc(o.kecamatan||'')+'"','"'+esc(o.kota||'')+'"','"'+esc(o.provinsi||'')+'"','"'+esc(o.wilayah||'')+'"','"'+esc(o.produk||'')+'"',o.qty,o.ongkir,o.total,o.metodebayar,'"'+esc(o.catatan||'')+'"',o.status].join(','));
+      rows.push([o.id,'"'+(o.timestamp||'')+'"','"'+esc(o.nama||'')+'"',o.wa,'"'+esc(o.alamat||'')+'"','"'+esc(o.kecamatan||'')+'"','"'+esc(o.kota||'')+'"','"'+esc(o.provinsi||'')+'"','"'+esc(o.wilayah||'')+'"','"'+esc(o.produk||'')+'"',o.qty,o.ongkir,o.total,o.metodebayar||o.metodeBayar,'"'+esc(o.catatan||'')+'"',o.status,o.utm_source||'',o.utm_medium||'',o.utm_campaign||''].join(','));
     });
     var blob = new Blob([rows.join('\n')],{type:'text/csv'});
     var a = document.createElement('a');

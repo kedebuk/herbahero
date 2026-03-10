@@ -1,160 +1,174 @@
-# LP Website — Landing Page Builder & Order Management
+# Herbahero — LP Management System
 
-Multi-landing-page website dengan builder visual, order form multi-step, dan dashboard CS.
+Platform LP Management untuk COD e-commerce Indonesia + Meta Ads. Buat, kelola, dan monitor landing page produk dari satu tempat.
 
-## 🚀 Quick Start
+**Live Demo:** [herbahero.my.id](https://herbahero.my.id)
 
-### 1. Deploy ke GitHub Pages
-```bash
-# Fork / clone repo ini
-git clone https://github.com/YOUR_USERNAME/lp-website.git
-cd lp-website
+## Features
 
-# Push ke GitHub
-git add . && git commit -m "initial" && git push
+- **LP Builder** — Buat landing page baru dengan upload foto, konfigurasi harga, benefit, testimonial, dan ongkir
+- **LP Manager** — Kelola semua LP: edit, preview, hapus, copy URL
+- **Order Dashboard** — Monitor order real-time, filter by status/tanggal, export CSV, detail modal
+- **Meta Pixel + CAPI** — Tracking otomatis: PageView, ViewContent, InitiateCheckout, Lead, Purchase + server-side CAPI via GAS
+- **UTM Tracking** — Capture utm_source, utm_medium, utm_campaign dari URL dan simpan ke order
+- **Multi-step Order Form** — Form 3 langkah: Data Diri → Pengiriman → Konfirmasi
+- **Ongkir Integration** — RajaOngkir API atau fallback rate manual per wilayah
+- **Sticky CTA Mobile** — Tombol order mengambang yang selalu terlihat di mobile
+- **Countdown Timer** — Timer penawaran terbatas untuk meningkatkan urgency
+- **Stok Counter** — Tampilkan sisa stok untuk scarcity
+- **WhatsApp Follow-up** — Link WA otomatis setelah order berhasil
+- **Cloudflare Custom Domain** — Integrasi custom domain per LP via Cloudflare Workers
 
-# Settings → Pages → Source: main branch / root → Save
-# Situs live di: https://YOUR_USERNAME.github.io/lp-website/
+## Quick Start
+
+### 1. Setup GitHub Token
+
+Buka **Settings** → Masukkan GitHub Personal Access Token (repo scope).
+
+### 2. Setup Google Apps Script (GAS) Backend
+
+1. Buat Google Spreadsheet baru
+2. Buka Extensions → Apps Script
+3. Copy-paste isi file `gas/Code.gs`
+4. Deploy → New Deployment → Web App → Execute as Me, Anyone can access
+5. Copy URL webhook, paste di Settings
+
+### 3. Setup Meta Pixel & CAPI
+
+1. Buka [Facebook Events Manager](https://business.facebook.com/events_manager)
+2. Buat atau pilih Pixel ID
+3. Generate Conversions API Token
+4. Masukkan di Settings atau langsung di LP Builder
+
+### 4. Buat LP Pertama
+
+Buka **LP Builder** → Isi nama, slug, upload foto → Publish ke website.
+
+### 5. Go Live!
+
+Pasang URL LP di Meta Ads → Monitor order di Dashboard → Scale!
+
+## Tech Stack
+
+| Komponen | Teknologi |
+|----------|-----------|
+| Frontend / Hosting | GitHub Pages (static HTML/CSS/JS) |
+| Backend / Database | Google Apps Script + Google Sheets |
+| Tracking (client) | Meta Pixel (fbevents.js) |
+| Tracking (server) | Facebook Conversions API via GAS |
+| Order Follow-up | WhatsApp API link |
+| Custom Domain | Cloudflare Workers (opsional) |
+| Ongkir | RajaOngkir API / Fallback rates |
+
+## File Structure
+
 ```
-
-### 2. Setup Google Apps Script (Backend Order)
-1. Buka [Google Sheets](https://sheets.google.com), buat spreadsheet baru
-2. Buka **Extensions → Apps Script**
-3. Hapus kode default, paste isi file `gas/Code.gs`
-4. Klik **Deploy → New deployment**
-   - Type: **Web app**
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-5. Copy URL deployment (format: `https://script.google.com/macros/s/xxx/exec`)
-
-### 3. Konfigurasi LP
-
-#### Cara A: Pakai Builder (Recommended)
-1. Buka `builder/index.html` (atau `https://YOUR_SITE/builder/`)
-2. Isi semua field: nama produk, harga, paket, benefits, testimoni
-3. Upload foto hero (drag & drop)
-4. Paste URL webhook GAS
-5. Atur ongkir (custom table atau RajaOngkir API)
-6. Klik **"Generate & Download"**
-7. Upload file HTML yang di-download ke root repo → push ke GitHub
-
-#### Cara B: Edit Manual
-1. Duplikat `lp-template.html` → rename (misal `produk-baru.html`)
-2. Edit `LP_CONFIG` di bagian atas file
-3. Ganti `webhookUrl` dengan URL GAS
-4. Upload foto hero ke `assets/images/`
-5. Push ke GitHub
-
-### 4. Setup Admin Dashboard
-1. Buka `admin/index.html`
-2. Edit `ADMIN_CONFIG.webhookUrl` → paste URL GAS yang sama
-3. Edit `ADMIN_CONFIG.password` → ganti password default
-4. Login ke dashboard untuk kelola order
-
-## 📁 Struktur File
-
-```
-lp-website/
-├── index.html              → Halaman utama (hub semua LP)
-├── lp-template.html        → Template LP kosong (duplikat untuk LP baru)
-├── lp-example.html         → Contoh LP (AngetPol)
-├── admin/
-│   └── index.html          → CS Dashboard (login + order management)
-├── builder/
-│   └── index.html          → LP Builder visual (generate HTML)
+herbahero/
+├── index.html              # Hub page — dashboard utama
+├── lp-template.html        # Template LP kosong (untuk builder)
+├── lp-example.html         # Contoh LP (AngetPol)
 ├── assets/
-│   ├── style.css           → Shared CSS
-│   └── images/             → Foto produk
+│   ├── style.css           # Shared CSS styles
+│   └── images/             # Folder gambar produk
+├── admin/
+│   ├── index.html          # Order Management Dashboard
+│   ├── pages.html          # LP Manager
+│   └── settings.html       # Settings (GitHub, Pixel, CAPI, GAS)
+├── builder/
+│   └── index.html          # LP Builder
 ├── gas/
-│   └── Code.gs             → Google Apps Script (copy ke GAS)
+│   └── Code.gs             # Google Apps Script backend
+├── _lps/                   # LP config files (JSON, auto-generated)
 └── README.md
 ```
 
-## 📦 LP_CONFIG Reference
+## GAS Setup Guide
+
+### Spreadsheet Headers (auto-created)
+
+```
+ID | Timestamp | Nama | WA | Alamat | Kecamatan | Kota | Provinsi | Wilayah | Produk | Qty | Ongkir | Total | MetodeBayar | Catatan | Upsell | LPSource | Status | UTM_Source | UTM_Medium | UTM_Campaign | UTM_Content
+```
+
+### Endpoints
+
+**POST** — Terima order baru
+```
+POST https://script.google.com/.../exec
+Body: { nama, wa, alamat, produk, qty, ongkir, total, metodeBayar, utm_source, utm_medium, utm_campaign, utm_content, _capi: {...} }
+```
+
+**GET** — Ambil semua order
+```
+GET https://script.google.com/.../exec?action=get_orders
+```
+
+**GET** — Update status order
+```
+GET https://script.google.com/.../exec?action=update_status&id=ORD-XXX&status=Selesai
+```
+
+## Meta Pixel + CAPI Events
+
+| Event | Trigger | Deduplicated |
+|-------|---------|-------------|
+| PageView | Halaman dimuat | Yes (eventID) |
+| ViewContent | Halaman dimuat | Yes |
+| InitiateCheckout | Step 2 (Pengiriman) | Yes |
+| Lead | Step 3 (Konfirmasi) | Yes |
+| Purchase | Form submit berhasil | Yes (client + server) |
+
+## LP_CONFIG Reference
 
 ```js
 const LP_CONFIG = {
   title: "Judul Hero",
   pixelId: "FB_PIXEL_ID",
-  heroImage: "assets/images/foto.jpg",  // atau base64
-  heroAlt: "Alt text",
+  capiToken: "",                    // Facebook CAPI Token
+  capiTestCode: "",                 // CAPI Test Event Code
+  heroImage: "assets/images/foto.jpg",
   heroSubtitle: "Subtitle",
   productName: "Nama Produk",
   productPrice: 99000,
-  productOptions: ["Paket 1", "Paket 2"],
+  productOptions: ["Paket 1 — Rp 99.000"],
   benefits: [{icon:"✅", title:"...", desc:"..."}],
   testimonials: [{text:"...", author:"...", stars:5}],
-  webhookUrl: "https://script.google.com/macros/s/.../exec",
+  webhookUrl: "https://script.google.com/.../exec",
   waNumber: "628xxx",
   waMessageTemplate: "Halo, saya ingin order {product} atas nama {name}",
   themeColor: "#2563eb",
+  scrollToCta: true,                // Sticky CTA button di mobile
+  countdownEnabled: false,          // Timer countdown
+  countdownMinutes: 30,
+  stockEnabled: false,              // Stock counter
+  stockCount: 47,
   shipping: {
-    provider: "rajaongkir",       // "rajaongkir" atau "custom_table"
-    apiKey: "YOUR_API_KEY",        // RajaOngkir API key
-    originCityId: "501",           // ID kota asal
-    couriers: ["jne","jnt"],       // Kurir yang ditampilkan
-    weightGram: 500,               // Berat default
-    fallbackRates: [               // Tabel ongkir manual / fallback
-      {wilayah:"Jabodetabek", ongkir:15000, estimasi:"1-2 hari"},
-      // ...
+    provider: "rajaongkir",
+    apiKey: "YOUR_API_KEY",
+    originCityId: "501",
+    couriers: ["jne","jnt"],
+    weightGram: 500,
+    fallbackRates: [
+      {wilayah:"Jabodetabek", ongkir:15000, estimasi:"1-2 hari"}
     ],
-    freeThreshold: 0               // Gratis ongkir jika subtotal >= nilai ini
+    freeThreshold: 0
   }
 };
 ```
 
-## 🚚 Sistem Ongkir
-
-### Mode 1: RajaOngkir (API)
-- Set `shipping.provider: "rajaongkir"` dan isi `apiKey`
-- User ketik kota → autocomplete dari API → pilih kurir → cek ongkir realtime
-- Kalau API gagal → otomatis fallback ke tabel manual
-
-### Mode 2: Tabel Custom (tanpa API)
-- Set `shipping.provider: "custom_table"` atau biarkan apiKey default
-- User pilih wilayah dari dropdown → ongkir dari tabel `fallbackRates`
-- Tidak perlu API key, semua client-side
-
-### Gratis Ongkir
-- Set `shipping.freeThreshold: 250000` → gratis ongkir untuk order ≥ Rp 250.000
-
-## 📊 Admin Dashboard
+## Admin Dashboard
 
 - Login dengan password (default: `admin123` — **GANTI!**)
-- Statistik: Total, Pending, Diproses, Selesai
+- Statistik: Total, Pending, Diproses, Selesai, Total Revenue
+- Order detail modal — klik baris untuk lihat detail lengkap
+- Date range filter — filter order berdasarkan tanggal
 - Update status order: Pending → Diproses → Dikirim → Selesai
+- Toast notification saat status berhasil diupdate
 - Search by nama/WA/produk
 - Filter by status
-- Export CSV
-- Link langsung ke WhatsApp customer
+- Export CSV (termasuk UTM data)
+- Keyboard shortcut: Escape untuk tutup modal
 
-## 🛠️ Builder
+## License
 
-- Visual editor dengan live preview
-- Upload foto hero (encode base64 → self-contained)
-- Edit semua field LP_CONFIG via form
-- Edit tabel ongkir custom
-- Konfigurasi RajaOngkir
-- Draft auto-save ke localStorage
-- Generate & download HTML siap deploy
-- Copy HTML ke clipboard
-
-## 📝 Form Order (Multi-Step)
-
-**Step 1 — Data Diri:**
-Nama, WhatsApp (validasi 08xx), Alamat, Kecamatan, Provinsi, Catatan
-
-**Step 2 — Pengiriman & Produk:**
-Pilih produk/paket, Qty, Wilayah/kota tujuan, Ongkir (auto-calculate), Total, Metode bayar
-
-**Step 3 — Konfirmasi:**
-Review ringkasan order → Submit
-
-## ⚡ Tech Stack
-
-- **Zero dependencies** — pure HTML/CSS/JS
-- **GitHub Pages** compatible
-- **Google Sheets** sebagai database (via Apps Script)
-- **Facebook Pixel** tracking built-in
-- **RajaOngkir API** integration (optional)
-- **Mobile-first** responsive design
+MIT License — free to use, modify, and distribute.

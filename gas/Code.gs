@@ -9,6 +9,7 @@
  *
  * Header row otomatis dibuat kalau belum ada.
  * Mendukung Facebook Conversions API (CAPI) server-side.
+ * Mendukung UTM tracking (utm_source, utm_medium, utm_campaign, utm_content).
  */
 
 var SHEET_NAME = 'Orders';
@@ -18,8 +19,8 @@ function getSheet() {
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(['ID','Timestamp','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Upsell','LPSource','Status']);
-    sh.getRange('A1:R1').setFontWeight('bold');
+    sh.appendRow(['ID','Timestamp','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Upsell','LPSource','Status','UTM_Source','UTM_Medium','UTM_Campaign','UTM_Content']);
+    sh.getRange('A1:V1').setFontWeight('bold');
   }
   return sh;
 }
@@ -119,7 +120,11 @@ function doPost(e) {
       d.catatan    || '',
       d.upsell     || '',
       d.lpSource   || d.src || '',
-      'Pending'
+      'Pending',
+      d.utm_source   || '',
+      d.utm_medium   || '',
+      d.utm_campaign || '',
+      d.utm_content  || ''
     ]);
 
     /* Kirim CAPI server-side (tidak mempengaruhi respons order) */

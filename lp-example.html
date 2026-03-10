@@ -48,8 +48,8 @@ const LP_CONFIG = {
   waMessageTemplate: "Halo, saya ingin order {product} atas nama {name}",
   themeColor: "#b45309",
   shipping: {
-    provider: "rajaongkir",
-    apiKey: "YOUR_RAJAONGKIR_API_KEY",
+    provider: "rajaongkir_v2",
+    apiKey: "saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP",
     originCityId: "501",
     couriers: ["jne","jnt","sicepat","pos"],
     weightGram: 300,
@@ -63,7 +63,12 @@ const LP_CONFIG = {
       {wilayah:"Papua & Maluku",ongkir:40000,estimasi:"7-14 hari"}
     ],
     freeThreshold: 250000
-  }
+  },
+  scrollToCta: true,
+  countdownEnabled: false,
+  countdownMinutes: 30,
+  stockEnabled: false,
+  stockCount: 47
 };
 </script>
 </head>
@@ -86,7 +91,22 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   var _pvId=generateEventId();fbq('track','PageView',{},{eventID:_pvId});
   var _vcId=generateEventId();fbq('track','ViewContent',{content_name:LP_CONFIG.productName,value:LP_CONFIG.productPrice,currency:'IDR'},{eventID:_vcId});
 }
+/* --- UTM tracking --- */
+(function(){
+  var params=["utm_source","utm_medium","utm_campaign","utm_content","utm_term"];
+  var search=window.location.search;
+  params.forEach(function(p){
+    var m=search.match(new RegExp("[?&]"+p+"=([^&]+)"));
+    if(m) sessionStorage.setItem(p,decodeURIComponent(m[1]));
+  });
+})();
 </script>
+<style>
+.sticky-cta{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:none}
+.sticky-cta a{background:var(--c);color:#fff;padding:14px 32px;border-radius:999px;font-weight:700;font-size:1rem;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25);display:block;text-align:center}
+.sticky-cta a:hover{text-decoration:none;filter:brightness(1.1)}
+@media(min-width:769px){.sticky-cta{display:none!important}}
+</style>
 
 <section class="lp-hero"><img id="heroImg" src="" alt=""><div class="lp-hero-overlay"><h1 id="heroTitle"></h1><p id="heroSubtitle"></p></div></section>
 <section class="lp-section"><h2 class="lp-section-title">Kenapa Harus Pilih Produk Ini?</h2><div class="benefits-grid" id="benefitsGrid"></div></section>
@@ -97,6 +117,8 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
 <h2>Order Sekarang</h2>
 <p class="form-subtitle" id="formProductName"></p>
 <div class="price-display"><div class="price" id="priceDisplay"></div><div class="price-note">Gratis ongkir untuk order di atas Rp 250.000!</div></div>
+<div id="countdownBox" style="text-align:center;margin:8px 0;font-size:.9rem;color:#dc2626;font-weight:600;display:none">⏳ Penawaran berakhir dalam: <span id="countdown"></span></div>
+<div id="stockBox" style="text-align:center;margin:8px 0;font-size:.85rem;color:#92400e;background:#fef3c7;padding:8px 16px;border-radius:8px;display:none">⚠️ Stok tersisa: <strong id="stockCount">47</strong> pcs</div>
 
 <div class="step-indicator">
   <div class="step-connector"><div class="step-connector-fill" id="stepFill"></div></div>
@@ -161,12 +183,15 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
 <div class="form-message error" id="errorMsg">❌ Gagal mengirim order. Silakan coba lagi.<div class="wa-fallback" id="waFallback"></div></div>
 </div>
 </section>
+<div class="sticky-cta" id="stickyCta"><a href="#orderSection" onclick="document.getElementById('stickyCta').style.display='none'">🛒 Order Sekarang</a></div>
+
 <footer class="lp-footer"><p id="footerText"></p></footer>
 
 <script>
 (function(){
   var C = LP_CONFIG, S = C.shipping||{};
-  var useApi = S.provider==='rajaongkir' && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
+  var useApi = (S.provider==='rajaongkir_v2'||S.provider==='rajaongkir') && S.apiKey && S.apiKey!=='YOUR_RAJAONGKIR_API_KEY';
+  var RO_BASE = S.provider==='rajaongkir_v2' ? 'https://rajaongkir.komerce.id' : 'https://api.rajaongkir.com';
   var currentOngkir = 0, subtotal = 0, cityCache = [];
 
   if(C.themeColor) document.documentElement.style.setProperty('--c', C.themeColor);
@@ -199,11 +224,16 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     S.couriers.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c.toUpperCase();cs.appendChild(o);});
     initCitySearch();
   } else {
-    document.getElementById('fallbackMode').style.display='block';
-    var ws=document.getElementById('wilayahSelect');
-    (S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' \u2014 Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
+    showFallback();
   }
   updateTotal();
+
+  function showFallback(){
+    document.getElementById('rajaongkirMode').style.display='none';
+    document.getElementById('fallbackMode').style.display='block';
+    var ws=document.getElementById('wilayahSelect');
+    if(ws.options.length<=1)(S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' \u2014 Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});
+  }
 
   function initCitySearch(){
     var input=document.getElementById('citySearch'),list=document.getElementById('cityList'),timer=null;
@@ -211,35 +241,46 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     input.addEventListener('blur',function(){setTimeout(function(){list.style.display='none';},200);});
   }
   function searchCity(q){
-    if(cityCache.length>0){renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));return;}
-    fetch('https://api.rajaongkir.com/starter/city',{headers:{'key':S.apiKey}})
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.rajaongkir&&d.rajaongkir.results){cityCache=d.rajaongkir.results;renderCities(cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;}));}
-    }).catch(function(){
-      document.getElementById('rajaongkirMode').style.display='none';
-      document.getElementById('fallbackMode').style.display='block';
-      var ws=document.getElementById('wilayahSelect');
-      if(ws.options.length<=1){(S.fallbackRates||[]).forEach(function(r,i){var o=document.createElement('option');o.value=i;o.textContent=r.wilayah+' \u2014 Rp '+r.ongkir.toLocaleString('id-ID');ws.appendChild(o);});}
-    });
+    var list=document.getElementById('cityList');
+    list.innerHTML='<div style="padding:10px 12px;color:#9ca3af;font-size:.85rem">🔍 Mencari...</div>';list.style.display='block';
+    if(S.provider==='rajaongkir_v2'){
+      fetch(RO_BASE+'/api/v1/destination?search='+encodeURIComponent(q),{headers:{'key':S.apiKey}})
+      .then(function(r){return r.json();}).then(function(d){
+        var items=(d.data&&Array.isArray(d.data))?d.data:[];
+        if(!items.length&&d.rajaongkir&&d.rajaongkir.results)items=d.rajaongkir.results.map(function(c){return{id:c.city_id,label:c.type+' '+c.city_name,city_name:c.city_name,province:c.province};});
+        if(!items.length){list.style.display='none';return;}
+        var h='';items.slice(0,25).forEach(function(c){var label=c.label||(c.city_name||'');var prov=c.province||'';h+='<div class="city-item" onmousedown="selectCity(\''+escAttr(c.id||'')+'\',\''+escAttr(label)+'\',\''+escAttr(prov)+'\')">'+esc(label)+'<small>'+esc(prov)+'</small></div>';});
+        list.innerHTML=h;list.style.display='block';
+      }).catch(function(){showFallback();list.style.display='none';});
+    } else {
+      if(cityCache.length>0){var f=cityCache.filter(function(c){return c.city_name.toLowerCase().indexOf(q.toLowerCase())>-1;});var h='';f.slice(0,20).forEach(function(c){h+='<div class="city-item" onmousedown="selectCity(\''+c.city_id+'\',\''+escAttr(c.type+' '+c.city_name)+'\',\''+escAttr(c.province)+'\')">'+esc(c.type+' '+c.city_name)+'<small>'+esc(c.province)+'</small></div>';});list.innerHTML=h||'<div style="padding:10px 12px;color:#9ca3af;font-size:.85rem">Tidak ditemukan</div>';list.style.display='block';return;}
+      fetch(RO_BASE+'/starter/city',{headers:{'key':S.apiKey}}).then(function(r){return r.json();}).then(function(d){
+        if(d.rajaongkir&&d.rajaongkir.results){cityCache=d.rajaongkir.results;searchCity(q);}
+      }).catch(function(){showFallback();list.style.display='none';});
+    }
   }
-  function renderCities(cities){
-    var list=document.getElementById('cityList');if(!cities.length){list.style.display='none';return;}
-    var h='';cities.slice(0,20).forEach(function(c){h+='<div style="padding:8px 12px;cursor:pointer;font-size:.9rem;border-bottom:1px solid #f3f4f6" onmousedown="selectCity(\''+c.city_id+"','"+c.type+' '+c.city_name+"','"+c.province+"')\" onmouseover=\"this.style.background='#dbeafe'\" onmouseout=\"this.style.background='#fff'\">"+c.type+' '+c.city_name+'<br><small style="color:#9ca3af">'+c.province+'</small></div>';});
-    list.innerHTML=h;list.style.display='block';
-  }
-  window.selectCity=function(id,name,prov){document.getElementById('citySearch').value=name;document.getElementById('destCityId').value=id;document.getElementById('kotaName').value=name;document.getElementById('cityList').style.display='none';var p=document.querySelector('input[name="provinsi"]');if(p)p.value=prov;};
+  window.selectCity=function(id,name,prov){
+    document.getElementById('citySearch').value=name;document.getElementById('destCityId').value=id;document.getElementById('kotaName').value=name;document.getElementById('cityList').style.display='none';
+    var p=document.querySelector('input[name="provinsi"]');if(p&&prov)p.value=prov;
+    var courier=document.getElementById('courierSelect').value;if(courier)window.checkOngkir();
+  };
   window.checkOngkir=function(){
     var destId=document.getElementById('destCityId').value,courier=document.getElementById('courierSelect').value,svcDiv=document.getElementById('shippingServices');
     if(!destId||!courier){svcDiv.style.display='none';return;}
-    svcDiv.innerHTML='<div style="text-align:center;padding:12px;color:#9ca3af">Mengecek ongkir...</div>';svcDiv.style.display='block';
-    var fd=new FormData();fd.append('origin',S.originCityId);fd.append('destination',destId);fd.append('weight',S.weightGram||500);fd.append('courier',courier);
-    fetch('https://api.rajaongkir.com/starter/cost',{method:'POST',headers:{'key':S.apiKey},body:fd})
-    .then(function(r){return r.json();}).then(function(d){
-      if(!d.rajaongkir||!d.rajaongkir.results||!d.rajaongkir.results.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Layanan tidak tersedia</div>';return;}
-      var costs=d.rajaongkir.results[0].costs;if(!costs.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Tidak ada layanan</div>';return;}
-      var h='';costs.forEach(function(svc){var cost=svc.cost[0];h+='<div style="padding:8px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f3f4f6"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem"><input type="radio" name="shippingService" value="'+cost.value+'" onchange="pickShipping('+cost.value+',\''+courier.toUpperCase()+' '+svc.service+' ('+cost.etd+' hari)\')"> '+courier.toUpperCase()+' '+svc.service+'</label><div style="text-align:right"><div style="font-weight:600;color:var(--c)">Rp '+cost.value.toLocaleString('id-ID')+'</div><div style="font-size:.75rem;color:#9ca3af">'+cost.etd+' hari</div></div></div>';});
-      svcDiv.innerHTML=h;
-    }).catch(function(){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem">Gagal cek ongkir</div>';});
+    svcDiv.innerHTML='<div style="text-align:center;padding:12px;color:#9ca3af;font-size:.9rem">⏳ Mengecek ongkir...</div>';svcDiv.style.display='block';
+    function renderSvc(results){
+      if(!results||!results.length){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">Layanan tidak tersedia</div>';return;}
+      var h='';results.forEach(function(res){(res.costs||[]).forEach(function(svc){var cost=svc.cost&&svc.cost[0]?svc.cost[0]:{value:0,etd:'-'};var cn=(res.code||courier).toUpperCase();var desc=cn+' '+svc.service+' ('+cost.etd+')';h+='<div class="shipping-option"><label><input type="radio" name="shippingService" value="'+cost.value+'" onchange="pickShipping('+cost.value+',\''+escAttr(desc)+'\')"><span class="svc-name">'+esc(cn+' '+svc.service)+'</span></label><div class="svc-meta"><span class="svc-price">Rp '+cost.value.toLocaleString('id-ID')+'</span><span class="svc-etd">'+esc(cost.etd)+' hari</span></div></div>';});});
+      svcDiv.innerHTML=h||'<div style="color:#9ca3af;font-size:.85rem;padding:8px">Tidak ada layanan.</div>';
+    }
+    if(S.provider==='rajaongkir_v2'){
+      fetch(RO_BASE+'/api/v1/calculate/domestic-cost',{method:'POST',headers:{'key':S.apiKey,'Content-Type':'application/json'},body:JSON.stringify({origin_city_id:S.originCityId,destination_city_id:destId,weight:S.weightGram||500,courier:courier})})
+      .then(function(r){return r.json();}).then(function(d){renderSvc((d.data&&d.data.results)||(d.rajaongkir&&d.rajaongkir.results)||[]);})
+      .catch(function(){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">❌ Gagal cek ongkir</div>';});
+    } else {
+      var fd=new FormData();fd.append('origin',S.originCityId);fd.append('destination',destId);fd.append('weight',S.weightGram||500);fd.append('courier',courier);
+      fetch(RO_BASE+'/starter/cost',{method:'POST',headers:{'key':S.apiKey},body:fd}).then(function(r){return r.json();}).then(function(d){renderSvc((d.rajaongkir&&d.rajaongkir.results)||[]);}).catch(function(){svcDiv.innerHTML='<div style="color:#dc2626;font-size:.85rem;padding:8px">❌ Gagal cek ongkir</div>';});
+    }
   };
   window.pickShipping=function(cost,desc){currentOngkir=cost;document.getElementById('ongkirAmount').value=cost;document.getElementById('shippingDesc').value=desc;updateTotal();};
   window.selectWilayah=function(){
@@ -304,7 +345,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     var btn=document.getElementById('submitBtn'),successMsg=document.getElementById('successMsg'),errorMsg=document.getElementById('errorMsg');
     var fd=new FormData(e.target),qty=parseInt(fd.get('qty'))||1,total=subtotal+currentOngkir;
     var eventId=generateEventId();
-    var data={nama:fd.get('nama'),wa:fd.get('wa'),alamat:fd.get('alamat'),kecamatan:fd.get('kecamatan')||'',kota:fd.get('kota')||document.getElementById('kotaName').value||'',provinsi:fd.get('provinsi')||'',wilayah:document.getElementById('shippingDesc').value||'',produk:fd.get('produk'),qty:qty,ongkir:currentOngkir,total:total,metodeBayar:fd.get('metodeBayar'),catatan:fd.get('catatan')||'',lpSource:window.location.pathname};
+    var data={nama:fd.get('nama'),wa:fd.get('wa'),alamat:fd.get('alamat'),kecamatan:fd.get('kecamatan')||'',kota:fd.get('kota')||document.getElementById('kotaName').value||'',provinsi:fd.get('provinsi')||'',wilayah:document.getElementById('shippingDesc').value||'',produk:fd.get('produk'),qty:qty,ongkir:currentOngkir,total:total,metodeBayar:fd.get('metodeBayar'),catatan:fd.get('catatan')||'',lpSource:window.location.pathname,utm_source:sessionStorage.getItem("utm_source")||"",utm_medium:sessionStorage.getItem("utm_medium")||"",utm_campaign:sessionStorage.getItem("utm_campaign")||"",utm_content:sessionStorage.getItem("utm_content")||""};
     // Attach CAPI payload for server-side tracking via GAS
     if(C.pixelId&&C.pixelId!=='XXXXXXXXXXXXXXX'){
       data._capi={pixelId:C.pixelId,token:C.capiToken||"",testCode:C.capiTestCode||"",event:"Purchase",value:total,fbc:getFbc(),fbp:getFbp(),eventId:eventId,clientUserAgent:navigator.userAgent,eventSourceUrl:window.location.href};
@@ -314,6 +355,50 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
     .then(function(){btn.classList.remove('loading');btn.disabled=false;successMsg.classList.add('show');document.getElementById('waLink').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">\uD83D\uDCF1 Chat CS via WhatsApp</a>';if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){fbq('track','Purchase',{value:total,currency:'IDR'},{eventID:eventId});}e.target.reset();goStep(1);})
     .catch(function(){btn.classList.remove('loading');btn.disabled=false;errorMsg.classList.add('show');document.getElementById('waFallback').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">\uD83D\uDCF1 Order via WhatsApp</a>';});
   });
+
+  /* === Sticky CTA with IntersectionObserver === */
+  if(C.scrollToCta!==false){
+    var stickyEl=document.getElementById('stickyCta');
+    var orderEl=document.getElementById('orderSection');
+    if(stickyEl&&orderEl&&'IntersectionObserver' in window){
+      var obs=new IntersectionObserver(function(entries){
+        stickyEl.style.display=entries[0].isIntersecting?'none':'block';
+      },{threshold:0.1});
+      obs.observe(orderEl);
+    }
+  }
+
+  /* === Countdown timer === */
+  if(C.countdownEnabled){
+    var cdBox=document.getElementById('countdownBox');
+    var cdSpan=document.getElementById('countdown');
+    if(cdBox&&cdSpan){
+      cdBox.style.display='block';
+      var cdKey='lp_cd_'+window.location.pathname;
+      var endTime=sessionStorage.getItem(cdKey);
+      if(!endTime){
+        endTime=Date.now()+(C.countdownMinutes||30)*60*1000;
+        sessionStorage.setItem(cdKey,endTime);
+      }
+      endTime=parseInt(endTime);
+      var cdInterval=setInterval(function(){
+        var diff=endTime-Date.now();
+        if(diff<=0){cdSpan.textContent='00:00';clearInterval(cdInterval);return;}
+        var m=Math.floor(diff/60000);var s=Math.floor((diff%60000)/1000);
+        cdSpan.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+      },1000);
+    }
+  }
+
+  /* === Stock counter === */
+  if(C.stockEnabled){
+    var stBox=document.getElementById('stockBox');
+    var stCount=document.getElementById('stockCount');
+    if(stBox&&stCount){
+      stBox.style.display='block';
+      stCount.textContent=C.stockCount||47;
+    }
+  }
 })();
 </script>
 </body>
