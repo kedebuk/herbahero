@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LP Manager — Herbahero</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.topbar h1{font-size:1.05rem;font-weight:700;white-space:nowrap}
+.back-link{color:#6b7280;text-decoration:none;font-size:.85rem;white-space:nowrap}
+.back-link:hover{color:#111}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn-new{padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-new:hover{background:#1d4ed8}
+.btn-icon{padding:7px 10px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;font-size:.85rem;cursor:pointer}
+.btn-icon:hover{background:#e5e7eb;color:#374151}
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+.no-token{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px;text-align:center}
+.no-token h2{font-size:1.1rem;margin-bottom:8px}
+.no-token p{color:#6b7280;font-size:.9rem;margin-bottom:16px}
+.no-token a{display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600}
+.stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;padding:14px 18px;flex:1;min-width:120px}
+.stat-card .num{font-size:1.6rem;font-weight:800;color:#1f2937}
+.stat-card .lbl{font-size:.78rem;color:#6b7280;margin-top:2px}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
+.card-head{padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between}
+.card-head h2{font-size:.95rem;font-weight:700}
+.search-bar{padding:8px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:.88rem;width:220px}
+.search-bar:focus{outline:none;border-color:#2563eb}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:.78rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
+td{padding:12px 14px;border-bottom:1px solid #f3f4f6;font-size:.88rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.lp-name{font-weight:600;color:#1f2937}
+.lp-slug{color:#6b7280;font-size:.8rem;margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.76rem;font-weight:600;white-space:nowrap}
+.badge.published{background:#dcfce7;color:#16a34a}
+.badge.draft{background:#f3f4f6;color:#6b7280}
+.url-link{color:#2563eb;text-decoration:none;font-size:.83rem;display:flex;align-items:center;gap:4px}
+.url-link:hover{text-decoration:underline}
+.actions{display:flex;gap:6px;flex-wrap:nowrap}
+.btn-act{padding:5px 11px;border-radius:6px;font-size:.79rem;font-weight:600;cursor:pointer;border:1px solid;text-decoration:none;white-space:nowrap}
+.btn-edit{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.btn-edit:hover{background:#dbeafe}
+.btn-view{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
+.btn-view:hover{background:#dcfce7}
+.btn-del{background:#fff;color:#dc2626;border-color:#fca5a5}
+.btn-del:hover{background:#fee2e2}
+.btn-del:disabled{opacity:.4;cursor:not-allowed}
+.empty-state{padding:48px 24px;text-align:center;color:#9ca3af}
+.empty-state h3{font-size:1rem;color:#6b7280;margin-bottom:8px}
+.empty-state p{font-size:.88rem;margin-bottom:20px}
+.empty-state a{color:#2563eb;text-decoration:none;font-weight:600}
+.loading-row td{text-align:center;color:#9ca3af;padding:32px}
+.toast{position:fixed;bottom:20px;right:20px;background:#1f2937;color:#fff;padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:999;display:none;max-width:320px}
+.toast.on{display:block}
+.toast.ok{background:#16a34a}
+.toast.er{background:#dc2626}
+@media(max-width:640px){
+  .stats-row{display:none}
+  th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none}
+  .search-bar{width:140px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="../" class="back-link">← Hub</a>
+    <h1>📄 LP Manager</h1>
+  </div>
+  <div class="topbar-right">
+    <a href="/builder/" class="btn-new">+ Buat LP Baru</a>
+    <a href="/admin/settings.html" class="btn-icon" title="Settings GitHub">⚙️</a>
+  </div>
+</div>
+
+<div class="container" id="appContainer">
+  <!-- populated by JS -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var ST = { TOKEN: 'gh_token', OWNER: 'gh_owner', REPO: 'gh_repo' };
+  var container = document.getElementById('appContainer');
+  var allLPs    = [];
+
+  function ghHeaders() {
+    return {
+      'Authorization': 'Bearer ' + (localStorage.getItem(ST.TOKEN) || ''),
+      'Accept': 'application/vnd.github+json'
+    };
+  }
+  function ghBase() {
+    return 'https://api.github.com/repos/' + owner() + '/' + repo() + '/contents/';
+  }
+  function owner() { return localStorage.getItem(ST.OWNER) || 'kedebuk'; }
+  function repo()  { return localStorage.getItem(ST.REPO)  || 'herbahero'; }
+
+  /* ── Boot ── */
+  if (!localStorage.getItem(ST.TOKEN)) {
+    renderNoToken();
+    return;
+  }
+  loadLPs();
+
+  /* ── Load LPs from GitHub _lps/ directory ── */
+  function loadLPs() {
+    container.innerHTML = renderSkeleton();
+    fetch(ghBase() + '_lps/', { headers: ghHeaders() })
+      .then(function (r) {
+        if (r.status === 404) return [];  /* _lps/ folder doesn't exist yet */
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (files) {
+        if (!Array.isArray(files)) files = [];
+        var jsonFiles = files.filter(function (f) { return f.name.endsWith('.json'); });
+        if (!jsonFiles.length) { allLPs = []; render([]); return; }
+
+        /* Fetch each config file */
+        return Promise.all(jsonFiles.map(function (f) {
+          return fetch(f.download_url)
+            .then(function (r) { return r.json(); })
+            .then(function (cfg) { cfg._sha = f.sha; return cfg; })
+            .catch(function () { return null; });
+        }));
+      })
+      .then(function (lps) {
+        allLPs = (lps || []).filter(Boolean).sort(function (a, b) {
+          return (b.updatedAt || '') > (a.updatedAt || '') ? 1 : -1;
+        });
+        render(allLPs);
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div class="no-token"><h2>❌ Gagal memuat LP</h2>'
+          + '<p>' + err.message + '</p>'
+          + '<a href="/admin/settings.html">Cek Settings GitHub →</a></div>';
+      });
+  }
+
+  /* ── Render ── */
+  function render(lps) {
+    var published = lps.filter(function (lp) { return lp.status === 'published'; }).length;
+    var html = '<div class="stats-row">'
+      + statCard(lps.length, 'Total LP')
+      + statCard(published, 'Published')
+      + statCard(lps.length - published, 'Draft')
+      + '</div>'
+      + '<div class="card">'
+      + '<div class="card-head"><h2>Daftar Landing Page</h2>'
+      + '<input class="search-bar" id="searchBox" placeholder="🔍 Cari LP..." oninput="filterLPs(this.value)">'
+      + '</div>';
+
+    if (!lps.length) {
+      html += '<div class="empty-state">'
+        + '<h3>Belum ada LP</h3>'
+        + '<p>Buat landing page pertama kamu dan publish langsung ke website.</p>'
+        + '<a href="/builder/">+ Buat LP Baru →</a>'
+        + '</div></div>';
+    } else {
+      html += '<table><thead><tr>'
+        + '<th>Nama LP</th><th>URL</th><th>Status</th><th>Diupdate</th><th>Aksi</th>'
+        + '</tr></thead><tbody id="lpTableBody">'
+        + lps.map(rowHTML).join('')
+        + '</tbody></table></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function rowHTML(lp) {
+    var o = owner(), r = repo();
+    var liveUrl = 'https://' + o + '.github.io/' + r + '/' + lp.slug;
+    var customDomain = 'herbahero.my.id';
+    var prettyUrl = 'https://' + customDomain + '/' + lp.slug;
+    var isPublished = lp.status === 'published';
+    var updated = lp.updatedAt ? new Date(lp.updatedAt).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+
+    return '<tr data-slug="' + esc(lp.slug) + '" data-name="' + esc(lp.name) + '">'
+      + '<td><div class="lp-name">' + esc(lp.name) + '</div>'
+      + '<div class="lp-slug">/' + esc(lp.slug) + '</div></td>'
+      + '<td><a class="url-link" href="' + prettyUrl + '" target="_blank" rel="noopener">'
+      + esc(customDomain + '/' + lp.slug) + ' ↗</a></td>'
+      + '<td>' + (isPublished
+          ? '<span class="badge published">✅ Published</span>'
+          : '<span class="badge draft">⬜ Draft</span>')
+      + '</td>'
+      + '<td>' + updated + '</td>'
+      + '<td class="actions">'
+      + '<a class="btn-act btn-edit" href="/builder/?slug=' + esc(lp.slug) + '">✏️ Edit</a>'
+      + '<a class="btn-act btn-view" href="' + prettyUrl + '" target="_blank" rel="noopener">👁 Lihat</a>'
+      + '<button class="btn-act btn-del" onclick="deleteLp(\'' + esc(lp.slug) + '\',\'' + esc(lp.name) + '\')" title="Hapus LP">🗑</button>'
+      + '</td></tr>';
+  }
+
+  function statCard(num, label) {
+    return '<div class="stat-card"><div class="num">' + num + '</div><div class="lbl">' + label + '</div></div>';
+  }
+
+  function renderSkeleton() {
+    return '<div class="card"><div class="card-head"><h2>Daftar Landing Page</h2></div>'
+      + '<table><tbody><tr class="loading-row"><td colspan="5">⏳ Memuat LP dari GitHub...</td></tr></tbody></table></div>';
+  }
+
+  function renderNoToken() {
+    container.innerHTML = '<div class="no-token">'
+      + '<h2>⚙️ Setup GitHub Token</h2>'
+      + '<p>Untuk mengelola LP, kamu perlu mengatur GitHub Personal Access Token terlebih dahulu.</p>'
+      + '<a href="/admin/settings.html">Buka Settings GitHub →</a></div>';
+  }
+
+  /* ── Search ── */
+  window.filterLPs = function (q) {
+    var term = q.toLowerCase();
+    var filtered = allLPs.filter(function (lp) {
+      return lp.name.toLowerCase().includes(term) || lp.slug.toLowerCase().includes(term);
+    });
+    var tbody = document.getElementById('lpTableBody');
+    if (tbody) tbody.innerHTML = filtered.map(rowHTML).join('') || '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada hasil</td></tr>';
+  };
+
+  /* ── Delete LP ── */
+  window.deleteLp = function (slug, name) {
+    if (!confirm('Hapus LP "' + name + '"?\n\nIni akan menghapus file HTML dan config dari GitHub. Tidak bisa di-undo.')) return;
+
+    var token = localStorage.getItem(ST.TOKEN) || '';
+    var base = ghBase();
+
+    showToast('⏳ Menghapus "' + name + '"...', '');
+
+    /* Need SHAs to delete */
+    Promise.all([
+      fetch(base + slug + '.html',        { headers: ghHeaders() }).then(function(r){ return r.ok ? r.json() : null; }),
+      fetch(base + '_lps/' + slug + '.json', { headers: ghHeaders() }).then(function(r){ return r.ok ? r.json() : null; })
+    ])
+    .then(function (files) {
+      var ops = [];
+      if (files[0] && files[0].sha) {
+        ops.push(fetch(base + slug + '.html', {
+          method: 'DELETE', headers: Object.assign({}, ghHeaders(), {'Content-Type':'application/json'}),
+          body: JSON.stringify({ message: 'Delete LP: ' + name, sha: files[0].sha })
+        }));
+      }
+      if (files[1] && files[1].sha) {
+        ops.push(fetch(base + '_lps/' + slug + '.json', {
+          method: 'DELETE', headers: Object.assign({}, ghHeaders(), {'Content-Type':'application/json'}),
+          body: JSON.stringify({ message: 'Delete LP config: ' + name, sha: files[1].sha })
+        }));
+      }
+      return Promise.all(ops);
+    })
+    .then(function () {
+      showToast('✅ LP "' + name + '" berhasil dihapus.', 'ok');
+      allLPs = allLPs.filter(function (lp) { return lp.slug !== slug; });
+      render(allLPs);
+    })
+    .catch(function (err) {
+      showToast('❌ Gagal hapus: ' + err.message, 'er');
+    });
+  };
+
+  /* ── Toast ── */
+  function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast on' + (type ? ' ' + type : '');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { t.className = 'toast'; }, 4000);
+  }
+
+  function esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+})();
+</script>
+</body>
+</html>

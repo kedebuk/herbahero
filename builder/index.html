@@ -55,9 +55,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .gen-section{padding:14px 16px;display:flex;flex-direction:column;gap:8px;margin-top:auto;border-top:1px solid #e5e7eb}
 .btn-gen{padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;width:100%}
 .btn-gen:hover{background:#1d4ed8}
+.btn-gen:disabled{background:#93c5fd;cursor:not-allowed}
+.btn-publish{padding:12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-publish:hover{background:#15803d}
+.btn-publish:disabled{background:#86efac;cursor:not-allowed}
 .btn-copy{padding:9px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:.88rem;cursor:pointer;width:100%}
 .btn-copy:hover{background:#e5e7eb}
 .gen-note{font-size:.73rem;color:#9ca3af;text-align:center}
+.slug-preview{font-size:.78rem;color:#6b7280;margin-top:3px}
+.slug-preview strong{color:#2563eb}
+.pub-status{padding:10px 12px;border-radius:8px;font-size:.83rem;display:none;word-break:break-all}
+.pub-status.on{display:block}
+.pub-status.ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.pub-status.er{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.pub-status.in{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.pub-status a{color:inherit;font-weight:700}
+.pages-link{font-size:.8rem;color:#6b7280;text-decoration:none;text-align:center;display:block}
+.pages-link:hover{color:#2563eb}
 .preview-pane{flex:1;display:flex;flex-direction:column;min-width:0;background:#e5e7eb}
 .preview-bar{padding:8px 14px;background:#fff;border-bottom:1px solid #e5e7eb;font-size:.82rem;font-weight:600;color:#374151;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .preview-bar span{font-size:.73rem;color:#9ca3af;font-weight:400}
@@ -84,6 +98,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 <!-- SIDEBAR -->
 <div class="sidebar">
+
+  <!-- 0. LP Identity -->
+  <div class="panel">
+    <div class="panel-head">🏷️ Identitas LP</div>
+    <div class="panel-body">
+      <div class="fg">
+        <label>Nama LP</label>
+        <input type="text" id="bLpName" placeholder="Contoh: AngetPol">
+      </div>
+      <div class="fg">
+        <label>Slug (URL)</label>
+        <input type="text" id="bLpSlug" placeholder="angetpol">
+        <div class="slug-preview">herbahero.my.id/<strong id="slugPreview">angetpol</strong></div>
+      </div>
+    </div>
+  </div>
 
   <!-- 1. Foto -->
   <div class="panel">
@@ -235,11 +265,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 
-  <!-- 3. Download -->
+  <!-- 3. Publish -->
   <div class="gen-section">
-    <button class="btn-gen" type="button" id="btnDownload">📥 Download HTML</button>
+    <button class="btn-publish" type="button" id="btnPublish">
+      <span id="pubSpinWrap" style="display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite"></span>
+      <span id="pubBtnLbl">🚀 Publish ke Website</span>
+    </button>
+    <div class="pub-status" id="pubStatus"></div>
     <button class="btn-copy" type="button" id="btnCopy">📋 Copy HTML</button>
-    <p class="gen-note">Self-contained HTML — foto embed, siap upload ke Vercel / GitHub Pages</p>
+    <a href="/admin/pages.html" class="pages-link">← LP Manager</a>
   </div>
 
 </div>
@@ -258,6 +292,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   'use strict';
 
   var heroBase64 = '';
+  var isEditMode = false;  /* true when loaded via ?slug= */
+  var editSha    = { html: null, cfg: null }; /* GitHub file SHAs for updates */
+  var urlSlug    = new URLSearchParams(window.location.search).get('slug');
   var options = ['Paket 1 (1 pcs) — Rp 99.000', 'Paket 2 (2 pcs) — Rp 179.000'];
   var rates = [
     { wilayah: 'Jabodetabek',    ongkir: 15000, estimasi: '1-2 hari' },
@@ -272,7 +309,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   /* Restore draft — try lpb4 then lpb3 (backward compat) */
   try {
     var d = JSON.parse(localStorage.getItem('lpb4') || localStorage.getItem('lpb3') || 'null');
-    if (d) {
+    if (d && !urlSlug) {  /* skip draft restore when in edit mode (loading from GitHub) */
+      if (d.ln) { el('bLpName').value = d.ln; el('bLpName').dataset.prev = d.ln; }
+      if (d.ls) { el('bLpSlug').value = d.ls; el('slugPreview').textContent = d.ls; }
       if (d.pn) el('bProductName').value = d.pn;
       if (d.pr) el('bPrice').value       = d.pr;
       if (d.px) el('bPixelId').value     = d.px;
@@ -308,6 +347,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
   renderOptions();
   renderRates();
+
+  /* ── LP Identity ── */
+  el('bLpName').addEventListener('input', function () {
+    /* Auto-fill slug only if user hasn't manually edited it, or slug is empty */
+    var currentSlug = el('bLpSlug').value;
+    var autoSlug = toSlug(this.value);
+    if (!currentSlug || currentSlug === toSlug(el('bLpName').dataset.prev || '')) {
+      el('bLpSlug').value = autoSlug;
+      el('slugPreview').textContent = autoSlug || 'slug-lp';
+    }
+    el('bLpName').dataset.prev = this.value;
+    refresh();
+  });
+  el('bLpSlug').addEventListener('input', function () {
+    this.value = toSlug(this.value, true);
+    el('slugPreview').textContent = this.value || 'slug-lp';
+    refresh();
+  });
+
+  /* ── Load from ?slug= param (edit mode) ── */
+  if (urlSlug) {
+    loadFromGitHub(urlSlug);
+  }
 
   /* File upload */
   el('heroFile').addEventListener('change', function () {
@@ -438,6 +500,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   function saveDraft() {
     try {
       localStorage.setItem('lpb4', JSON.stringify({
+        ln: gv('bLpName'),      ls: gv('bLpSlug'),
         pn: gv('bProductName'), pr: gv('bPrice'),
         px: gv('bPixelId'),     eo: gv('bEventOpen'),
         es: gv('bEventSubmit'), ct: gv('bCapiToken'),
@@ -766,17 +829,202 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     return '<div class="fg"><label>' + label + '</label>' + inner + '</div>\n';
   }
 
-  /* Download / Copy */
-  el('btnDownload').addEventListener('click', function () {
-    var blob = new Blob([buildHTML()], { type: 'text/html' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = (gv('bProductName') || 'landing-page').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  });
+  /* ── GitHub Publish ── */
+  el('btnPublish').addEventListener('click', publishLP);
+
+  function ghHeaders() {
+    var token = localStorage.getItem('gh_token') || '';
+    return { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+  }
+
+  function ghBase() {
+    var owner = localStorage.getItem('gh_owner') || 'kedebuk';
+    var repo  = localStorage.getItem('gh_repo')  || 'herbahero';
+    return 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/';
+  }
+
+  function ghGetSha(path) {
+    return fetch(ghBase() + path, { headers: ghHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return d.sha || null; })
+      .catch(function () { return null; });
+  }
+
+  function ghPut(path, content, sha, message) {
+    var body = { message: message, content: btoa(unescape(encodeURIComponent(content))) };
+    if (sha) body.sha = sha;
+    return fetch(ghBase() + path, { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) return r.json().then(function(e){ throw new Error(e.message || r.status); }); return r.json(); });
+  }
+
+  function publishLP() {
+    var slug = gv('bLpSlug').trim();
+    var name = gv('bLpName').trim();
+    if (!name) { showPub('er', '❌ Isi dulu Nama LP di bagian "Identitas LP".'); return; }
+    if (!slug) { showPub('er', '❌ Isi dulu Slug LP.'); return; }
+    if (!/^[a-z0-9-]+$/.test(slug)) { showPub('er', '❌ Slug hanya boleh huruf kecil, angka, dan tanda "-".'); return; }
+
+    var token = localStorage.getItem('gh_token');
+    if (!token) {
+      showPub('er', '❌ GitHub token belum diset. <a href="/admin/settings.html">Buka Settings →</a>');
+      return;
+    }
+
+    setPubLoading(true);
+    showPub('in', '⏳ Menghubungi GitHub...');
+
+    var htmlPath = slug + '.html';
+    var cfgPath  = '_lps/' + slug + '.json';
+    var htmlContent = buildHTML();
+    var cfgContent  = buildConfig(slug, name);
+
+    /* Get existing SHAs (for updates) */
+    Promise.all([ghGetSha(htmlPath), ghGetSha(cfgPath)])
+      .then(function (shas) {
+        showPub('in', '⏳ Uploading LP...');
+        return ghPut(htmlPath, htmlContent, shas[0], (shas[0] ? 'Update' : 'Publish') + ' LP: ' + name + ' (' + slug + ')')
+          .then(function () {
+            showPub('in', '⏳ Menyimpan config...');
+            return ghPut(cfgPath, cfgContent, shas[1], 'Config LP: ' + name);
+          });
+      })
+      .then(function () {
+        var owner = localStorage.getItem('gh_owner') || 'kedebuk';
+        var repo  = localStorage.getItem('gh_repo')  || 'herbahero';
+        var liveUrl = 'https://' + owner + '.github.io/' + repo + '/' + slug;
+        showPub('ok', '✅ LP berhasil dipublish! <a href="' + liveUrl + '" target="_blank">Buka ' + liveUrl + ' →</a>');
+      })
+      .catch(function (err) {
+        showPub('er', '❌ Gagal publish: ' + err.message + '. Cek GitHub token di <a href="/admin/settings.html">Settings</a>.');
+      })
+      .finally(function () { setPubLoading(false); });
+  }
+
+  function setPubLoading(on) {
+    el('btnPublish').disabled = on;
+    el('pubSpinWrap').style.display = on ? 'block' : 'none';
+    el('pubBtnLbl').textContent = on ? 'Publishing...' : '🚀 Publish ke Website';
+  }
+
+  function showPub(type, html) {
+    var s = el('pubStatus');
+    s.className = 'pub-status' + (type ? ' on ' + type : '');
+    s.innerHTML = html;
+  }
+
+  function buildConfig(slug, name) {
+    return JSON.stringify({
+      slug:        slug,
+      name:        name,
+      status:      'published',
+      createdAt:   new Date().toISOString(),
+      updatedAt:   new Date().toISOString(),
+      heroBase64:  heroBase64,
+      enablePixel: el('enablePixel').checked,
+      pixelId:     gv('bPixelId'),
+      eventOpen:   gv('bEventOpen') || 'PageView',
+      eventSubmit: gv('bEventSubmit') || 'Purchase',
+      capiToken:   gv('bCapiToken'),
+      testCode:    gv('bTestCode'),
+      enableForm:  el('enableForm').checked,
+      productName: gv('bProductName'),
+      price:       parseInt(gv('bPrice')) || 99000,
+      options:     options.slice(),
+      waNumber:    gv('bWaNumber'),
+      webhook:     gv('bWebhook'),
+      rates:       rates.slice(),
+      fields: {
+        alamat:    el('fAlamat').checked,
+        kecamatan: el('fKecamatan').checked,
+        kota:      el('fKota').checked,
+        provinsi:  el('fProvinsi').checked,
+        catatan:   el('fCatatan').checked
+      },
+      payMethods:    getPayMethods(),
+      enableUpsell:  el('enableUpsell').checked,
+      upsellText:    gv('bUpsellText'),
+      upsellPrice:   parseInt(gv('bUpsellPrice')) || 0,
+      submitBtn:     gv('bSubmitBtn') || 'Kirim Order Sekarang 🚀',
+      color:         gv('bColor') || '#2563eb'
+    }, null, 2);
+  }
+
+  /* ── Load LP config from GitHub (edit mode) ── */
+  function loadFromGitHub(slug) {
+    var owner = localStorage.getItem('gh_owner') || 'kedebuk';
+    var repo  = localStorage.getItem('gh_repo')  || 'herbahero';
+    var token = localStorage.getItem('gh_token') || '';
+    showPub('in', '⏳ Memuat LP "' + slug + '" dari GitHub...');
+
+    fetch('https://api.github.com/repos/' + owner + '/' + repo + '/contents/_lps/' + slug + '.json', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+    })
+    .then(function (r) {
+      if (!r.ok) throw new Error('Config LP tidak ditemukan di GitHub (status ' + r.status + ').');
+      return r.json();
+    })
+    .then(function (file) {
+      editSha.cfg = file.sha;
+      var cfg = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g, '')))));
+      applyConfig(cfg);
+      isEditMode = true;
+      showPub('ok', '✅ LP "' + cfg.name + '" dimuat. Edit lalu klik Publish untuk update.');
+      /* Also get HTML SHA */
+      return ghGetSha(slug + '.html').then(function(sha){ editSha.html = sha; });
+    })
+    .catch(function (err) {
+      showPub('er', '❌ ' + err.message);
+    });
+  }
+
+  function applyConfig(cfg) {
+    el('bLpName').value = cfg.name || '';
+    el('bLpName').dataset.prev = cfg.name || '';
+    el('bLpSlug').value = cfg.slug || '';
+    el('slugPreview').textContent = cfg.slug || 'slug-lp';
+
+    if (cfg.heroBase64) {
+      heroBase64 = cfg.heroBase64;
+      el('heroPreview').src = heroBase64;
+      el('dropZone').style.display    = 'none';
+      el('photoDone').style.display   = 'block';
+    }
+
+    if (cfg.productName) el('bProductName').value = cfg.productName;
+    if (cfg.price)       el('bPrice').value       = cfg.price;
+    if (cfg.waNumber)    el('bWaNumber').value     = cfg.waNumber;
+    if (cfg.webhook)     el('bWebhook').value      = cfg.webhook;
+    if (cfg.color)       el('bColor').value        = cfg.color;
+    if (cfg.submitBtn)   el('bSubmitBtn').value    = cfg.submitBtn;
+    if (cfg.pixelId)     el('bPixelId').value      = cfg.pixelId;
+    if (cfg.eventOpen)   el('bEventOpen').value    = cfg.eventOpen;
+    if (cfg.eventSubmit) el('bEventSubmit').value  = cfg.eventSubmit;
+    if (cfg.capiToken)   el('bCapiToken').value    = cfg.capiToken;
+    if (cfg.testCode)    el('bTestCode').value     = cfg.testCode;
+    if (cfg.upsellText)  el('bUpsellText').value   = cfg.upsellText;
+    if (cfg.upsellPrice) el('bUpsellPrice').value  = cfg.upsellPrice;
+
+    if (cfg.enablePixel)  { el('enablePixel').checked  = true; elShow('pixelBody');  }
+    if (cfg.enableForm)   { el('enableForm').checked   = true; elShow('formBody');   }
+    if (cfg.enableUpsell) { el('enableUpsell').checked = true; elShow('upsellBody'); }
+
+    if (cfg.options) { options = cfg.options; renderOptions(); }
+    if (cfg.rates)   { rates   = cfg.rates;   renderRates();   }
+
+    if (cfg.fields) {
+      if (cfg.fields.alamat    !== undefined) el('fAlamat').checked    = cfg.fields.alamat;
+      if (cfg.fields.kecamatan !== undefined) el('fKecamatan').checked = cfg.fields.kecamatan;
+      if (cfg.fields.kota      !== undefined) el('fKota').checked      = cfg.fields.kota;
+      if (cfg.fields.provinsi  !== undefined) el('fProvinsi').checked  = cfg.fields.provinsi;
+      if (cfg.fields.catatan   !== undefined) el('fCatatan').checked   = cfg.fields.catatan;
+    }
+    if (cfg.payMethods) {
+      document.querySelectorAll('.cbPay').forEach(function (cb) {
+        cb.checked = cfg.payMethods.indexOf(cb.value) !== -1;
+      });
+    }
+    refresh();
+  }
 
   el('btnCopy').addEventListener('click', function () {
     var html = buildHTML();
@@ -799,6 +1047,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   function elShow(id) { var e = el(id); if (e) e.style.display = 'flex'; }
   function esc(s) {
     return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+  }
+  function toSlug(s, allowTyping) {
+    /* allowTyping = true → keep trailing hyphen while user types */
+    var r = (s || '').toLowerCase()
+      .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+      .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+      .replace(/[ùúûü]/g,'u')
+      .replace(/[^a-z0-9\s-]/g,'')
+      .replace(/[\s_]+/g,'-')
+      .replace(/-+/g,'-');
+    return allowTyping ? r : r.replace(/^-+|-+$/g,'');
   }
 
   setTimeout(doPreview, 200);

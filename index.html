@@ -16,8 +16,15 @@
   <div class="card">
     <div class="card-icon">🛠️</div>
     <h3>LP Builder</h3>
-    <p>Buat landing page baru tanpa coding. Upload foto, isi config, download HTML siap pakai.</p>
+    <p>Buat landing page baru. Upload foto, isi config, publish langsung ke website.</p>
     <a href="builder/" class="btn">Buka Builder →</a>
+  </div>
+
+  <div class="card">
+    <div class="card-icon">📄</div>
+    <h3>LP Manager</h3>
+    <p>Kelola semua landing page yang sudah dibuat. Edit, lihat, atau hapus LP kapan saja.</p>
+    <a href="admin/pages.html" class="btn">Buka LP Manager →</a>
   </div>
 
   <div class="card">
@@ -28,27 +35,20 @@
   </div>
 
   <div class="card">
-    <div class="card-icon">📄</div>
-    <h3>LP Template (Kosong)</h3>
-    <p>Template LP siap duplikat. Edit LP_CONFIG di bagian atas file, ganti foto, deploy.</p>
-    <a href="lp-template.html" class="btn btn-outline">Lihat Template</a>
-  </div>
-
-  <div class="card">
-    <div class="card-icon">🧪</div>
-    <h3>LP Contoh — AngetPol</h3>
-    <p>Contoh LP yang sudah diisi lengkap dengan data produk herbal AngetPol.</p>
-    <a href="lp-example.html" class="btn btn-outline">Lihat Contoh</a>
+    <div class="card-icon">⚙️</div>
+    <h3>Settings GitHub</h3>
+    <p>Setup GitHub Token untuk publish LP langsung ke herbahero.my.id.</p>
+    <a href="admin/settings.html" class="btn btn-outline">Buka Settings →</a>
   </div>
 </div>
 
 <div style="max-width:700px;margin:0 auto;padding:32px 16px">
-  <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:12px">📋 Cara Cepat Tambah LP Baru</h2>
+  <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:12px">📋 Cara Publish LP Baru</h2>
   <ol style="font-size:.9rem;color:#4b5563;line-height:1.8;padding-left:20px">
-    <li><strong>Pakai Builder</strong> → Buka Builder → Isi semua field → Upload foto hero → Klik "Generate &amp; Download"</li>
-    <li><strong>Upload file HTML</strong> → Taruh file yang di-download ke root folder repo ini</li>
-    <li><strong>Push ke GitHub</strong> → File otomatis live di GitHub Pages</li>
-    <li><strong>Atau manual:</strong> Duplikat <code>lp-template.html</code> → Rename → Edit <code>LP_CONFIG</code> di bagian atas</li>
+    <li><strong>Setup sekali</strong> → Buka Settings → Masukkan GitHub Token</li>
+    <li><strong>Buka Builder</strong> → Isi Nama LP + Slug + Upload foto + Konfigurasi form</li>
+    <li><strong>Klik "Publish ke Website"</strong> → LP langsung live di herbahero.my.id/[slug]</li>
+    <li><strong>Kelola di LP Manager</strong> → Edit, preview, atau hapus LP yang sudah ada</li>
   </ol>
 </div>
 

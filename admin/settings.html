@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Herbahero</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+.header{background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 24px;display:flex;align-items:center;gap:12px}
+.header h1{font-size:1.05rem;font-weight:700}
+.back-link{color:#6b7280;text-decoration:none;font-size:.85rem}
+.back-link:hover{color:#111}
+.container{max-width:560px;margin:32px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:20px}
+.card-head{padding:16px 20px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px}
+.card-body{padding:20px}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:.85rem;font-weight:600;color:#374151;margin-bottom:5px}
+.fg input{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;font-family:inherit;background:#fff}
+.fg input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fg input[type=password]{font-family:monospace;letter-spacing:.08em}
+.fg .hint{font-size:.78rem;color:#6b7280;margin-top:4px}
+.fg .hint a{color:#2563eb;text-decoration:none}
+.fg .hint a:hover{text-decoration:underline}
+.btn-row{display:flex;gap:10px;margin-top:4px}
+.btn-primary{padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;flex:1}
+.btn-primary:hover{background:#1d4ed8}
+.btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
+.btn-secondary{padding:10px 20px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer}
+.btn-secondary:hover{background:#e5e7eb}
+.status{padding:12px 14px;border-radius:8px;font-size:.88rem;margin-top:12px;display:none}
+.status.ok{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.status.er{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.status.on{display:block}
+.saved-badge{display:none;align-items:center;gap:6px;font-size:.82rem;color:#16a34a;background:#dcfce7;padding:5px 11px;border-radius:20px;border:1px solid #86efac}
+.saved-badge.on{display:flex}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:13px 15px;font-size:.85rem;color:#1e40af;line-height:1.6}
+.info-box ol{padding-left:18px;margin-top:6px}
+.info-box li{margin-bottom:3px}
+.info-box code{background:#dbeafe;padding:1px 5px;border-radius:4px;font-size:.82rem}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="../" class="back-link">← Kembali</a>
+  <h1>⚙️ Settings GitHub</h1>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-head">🔑 GitHub Personal Access Token</div>
+    <div class="card-body">
+      <div class="info-box">
+        Token digunakan untuk publish LP langsung ke GitHub repo. Cara buat:
+        <ol>
+          <li>Buka <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">github.com/settings/tokens/new</a></li>
+          <li>Note: <code>Herbahero LP Publisher</code></li>
+          <li>Expiration: No expiration (atau pilih durasi)</li>
+          <li>Centang scope: <code>repo</code> (full control)</li>
+          <li>Generate token → Copy, paste di bawah</li>
+        </ol>
+      </div>
+      <br>
+      <div class="fg">
+        <label>Personal Access Token</label>
+        <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        <div class="hint">Tersimpan lokal di browser ini, tidak dikirim ke mana-mana.</div>
+      </div>
+      <div class="fg">
+        <label>GitHub Username (Owner)</label>
+        <input type="text" id="ghOwner" placeholder="kedebuk">
+      </div>
+      <div class="fg">
+        <label>Nama Repository</label>
+        <input type="text" id="ghRepo" placeholder="herbahero">
+      </div>
+      <div id="statusMsg" class="status"></div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btnTest">🔌 Test Koneksi</button>
+        <button class="btn-primary" id="btnSave" style="background:#16a34a">💾 Simpan</button>
+      </div>
+      <div id="savedBadge" class="saved-badge" style="margin-top:10px">✅ Settings tersimpan</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">🔗 Quick Links</div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+      <a href="/admin/pages.html" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ LP Manager</a>
+      <a href="/builder/" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ LP Builder</a>
+      <a href="/admin/" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ Dashboard Order</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var ST = {
+    TOKEN: 'gh_token',
+    OWNER: 'gh_owner',
+    REPO:  'gh_repo'
+  };
+
+  /* Restore saved values */
+  var t = localStorage.getItem(ST.TOKEN);
+  var o = localStorage.getItem(ST.OWNER) || 'kedebuk';
+  var r = localStorage.getItem(ST.REPO)  || 'herbahero';
+  if (t) el('ghToken').value = t;
+  el('ghOwner').value = o;
+  el('ghRepo').value  = r;
+
+  el('btnTest').addEventListener('click', function(){
+    var token = el('ghToken').value.trim();
+    var owner = el('ghOwner').value.trim();
+    var repo  = el('ghRepo').value.trim();
+    if (!token) { showStatus('er', 'Token tidak boleh kosong.'); return; }
+    el('btnTest').disabled = true;
+    el('btnTest').textContent = '⏳ Testing...';
+    showStatus('', '');
+
+    /* Test 1: verify token is valid */
+    fetch('https://api.github.com/user', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (!data.login) throw new Error('Token tidak valid.');
+      /* Test 2: verify repo access */
+      return fetch('https://api.github.com/repos/' + owner + '/' + repo, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+      });
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (!data.name) throw new Error('Repo ' + owner + '/' + repo + ' tidak ditemukan atau tidak ada akses.');
+      showStatus('ok', '✅ Koneksi berhasil! Login sebagai: ' + data.owner.login + ', repo: ' + data.full_name);
+    })
+    .catch(function(err){
+      showStatus('er', '❌ ' + err.message);
+    })
+    .finally(function(){
+      el('btnTest').disabled = false;
+      el('btnTest').textContent = '🔌 Test Koneksi';
+    });
+  });
+
+  el('btnSave').addEventListener('click', function(){
+    var token = el('ghToken').value.trim();
+    var owner = el('ghOwner').value.trim();
+    var repo  = el('ghRepo').value.trim();
+    if (!token || !owner || !repo) {
+      showStatus('er', 'Semua field wajib diisi.');
+      return;
+    }
+    localStorage.setItem(ST.TOKEN, token);
+    localStorage.setItem(ST.OWNER, owner);
+    localStorage.setItem(ST.REPO,  repo);
+    el('savedBadge').classList.add('on');
+    showStatus('ok', '✅ Settings berhasil disimpan.');
+    setTimeout(function(){ el('savedBadge').classList.remove('on'); }, 3000);
+  });
+
+  function showStatus(type, msg) {
+    var el2 = el('statusMsg');
+    el2.className = 'status' + (type ? ' on ' + type : '');
+    el2.textContent = msg;
+  }
+
+  function el(id){ return document.getElementById(id); }
+})();
+</script>
+</body>
+</html>
