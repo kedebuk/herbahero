@@ -8,75 +8,60 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;height:100vh;overflow:hidden}
 .builder{display:flex;flex-direction:column;height:100vh}
-
-/* Header */
 .builder-header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0;z-index:10}
 .builder-header h1{font-size:1.05rem;font-weight:700}
 .back-link{color:#6b7280;text-decoration:none;font-size:.85rem;white-space:nowrap}
 .back-link:hover{color:#111}
-
-/* Body */
 .builder-body{display:flex;flex:1;overflow:hidden}
-
-/* Sidebar */
-.sidebar{width:320px;min-width:260px;overflow-y:auto;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;gap:0}
-
+.sidebar{width:340px;min-width:280px;overflow-y:auto;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column}
 .panel{border-bottom:1px solid #e5e7eb}
 .panel-head{padding:12px 16px;font-weight:700;font-size:.88rem;color:#374151;background:#f9fafb;display:flex;align-items:center;gap:6px}
 .panel-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
-
-/* Drop zone — file input inside label, paling reliable */
 .drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #d1d5db;border-radius:10px;padding:24px 16px;cursor:pointer;text-align:center;transition:border-color .2s,background .2s;background:#fafafa;position:relative;min-height:120px}
 .drop-zone:hover,.drop-zone.over{border-color:#2563eb;background:#eff6ff}
 .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0}
 .dz-icon{font-size:2rem;pointer-events:none}
 .dz-text{font-size:.85rem;color:#6b7280;margin-top:6px;pointer-events:none}
-
 .photo-done{display:none;position:relative}
 .photo-done img{width:100%;border-radius:8px;display:block;max-height:180px;object-fit:cover}
 .photo-done .rm-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:5px;padding:4px 9px;font-size:.75rem;cursor:pointer}
-
-/* Toggle blocks */
 .toggle-block{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
 .toggle-head{display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;background:#f9fafb;user-select:none}
 .toggle-head:hover{background:#f3f4f6}
 .toggle-head input[type=checkbox]{width:17px;height:17px;accent-color:#2563eb;cursor:pointer;flex-shrink:0}
 .toggle-head .tl{font-weight:600;font-size:.88rem}
 .toggle-content{padding:12px 14px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:10px}
-
-/* Form elements */
 .fg label{display:block;font-size:.82rem;font-weight:600;color:#374151;margin-bottom:3px}
-.fg .req{color:#dc2626}
 .fg input[type=text],.fg input[type=tel],.fg input[type=number],.fg select,.fg textarea{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:.88rem;font-family:inherit;background:#fff}
 .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.fg textarea{resize:vertical;min-height:60px}
+.fg textarea{resize:vertical;min-height:56px}
 .fg input[type=color]{padding:2px;height:34px;border-radius:7px;cursor:pointer}
-
+.fg .hint{font-size:.74rem;color:#9ca3af;margin-top:2px}
+.fg-sep{border:none;border-top:1px solid #e5e7eb;margin:2px 0}
 .opt-row{display:flex;gap:5px;margin-bottom:4px}
 .opt-row input{flex:1}
 .btn-rm{background:none;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:4px 8px;font-size:.78rem;cursor:pointer;flex-shrink:0}
 .btn-add{width:100%;background:none;border:1px dashed #d1d5db;color:#6b7280;border-radius:7px;padding:6px;font-size:.82rem;cursor:pointer;margin-top:2px}
 .btn-add:hover{border-color:#2563eb;color:#2563eb}
-
 .rate-table{width:100%;border-collapse:collapse;font-size:.78rem}
 .rate-table th{background:#f3f4f6;padding:5px 6px;text-align:left;color:#6b7280;font-size:.75rem;border-bottom:1px solid #e5e7eb}
 .rate-table td{padding:3px}
 .rate-table td input{width:100%;padding:4px 5px;border:1px solid #d1d5db;border-radius:4px;font-size:.78rem}
-
-/* Generate section */
-.gen-section{padding:14px 16px;display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.field-toggles{display:flex;flex-wrap:wrap;gap:5px}
+.ftog{display:flex;align-items:center;gap:4px;font-size:.81rem;color:#374151;cursor:pointer;background:#f3f4f6;padding:4px 9px;border-radius:5px;user-select:none;border:1px solid #e5e7eb}
+.ftog input[type=checkbox]{accent-color:#2563eb;cursor:pointer;width:14px;height:14px}
+.ftog:has(input:checked){background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.pay-grid{display:flex;flex-direction:column;gap:5px}
+.gen-section{padding:14px 16px;display:flex;flex-direction:column;gap:8px;margin-top:auto;border-top:1px solid #e5e7eb}
 .btn-gen{padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;width:100%}
 .btn-gen:hover{background:#1d4ed8}
 .btn-copy{padding:9px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:.88rem;cursor:pointer;width:100%}
 .btn-copy:hover{background:#e5e7eb}
 .gen-note{font-size:.73rem;color:#9ca3af;text-align:center}
-
-/* Preview */
 .preview-pane{flex:1;display:flex;flex-direction:column;min-width:0;background:#e5e7eb}
 .preview-bar{padding:8px 14px;background:#fff;border-bottom:1px solid #e5e7eb;font-size:.82rem;font-weight:600;color:#374151;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .preview-bar span{font-size:.73rem;color:#9ca3af;font-weight:400}
 #previewFrame{flex:1;border:none;background:#fff}
-
 @media(max-width:700px){
   body{height:auto;overflow:auto}
   .builder{height:auto;min-height:100vh}
@@ -104,7 +89,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="panel">
     <div class="panel-head">📷 1. Upload Foto Produk</div>
     <div class="panel-body">
-      <!-- Label wrapping file input = paling reliable, tidak butuh JS click -->
       <label class="drop-zone" id="dropZone">
         <div class="dz-icon">🖼️</div>
         <div class="dz-text">Drag &amp; drop atau<br><strong>klik di sini</strong> untuk pilih foto</div>
@@ -122,16 +106,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="panel-head">⚙️ 2. Elemen Tambahan (opsional)</div>
     <div class="panel-body">
 
-      <!-- Pixel -->
+      <!-- Pixel & CAPI -->
       <div class="toggle-block">
         <div class="toggle-head" id="pixelHead">
           <input type="checkbox" id="enablePixel">
-          <span class="tl">📊 Facebook Pixel</span>
+          <span class="tl">📊 Facebook Pixel &amp; CAPI</span>
         </div>
         <div class="toggle-content" id="pixelBody" style="display:none">
           <div class="fg">
             <label>Pixel ID</label>
             <input type="text" id="bPixelId" placeholder="Contoh: 1234567890123456">
+          </div>
+          <div class="fg">
+            <label>Event saat LP dibuka</label>
+            <select id="bEventOpen">
+              <option value="PageView">PageView</option>
+              <option value="ViewContent">ViewContent</option>
+              <option value="InitiateCheckout">InitiateCheckout</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Event saat order dikirim</label>
+            <select id="bEventSubmit">
+              <option value="Purchase">Purchase</option>
+              <option value="Lead">Lead</option>
+              <option value="CompleteRegistration">CompleteRegistration</option>
+            </select>
+          </div>
+          <hr class="fg-sep">
+          <div class="fg">
+            <label>CAPI Access Token</label>
+            <textarea id="bCapiToken" placeholder="EAAxxxxxxxx... (dari Meta Business → Pixel → Settings → Conversions API)"></textarea>
+            <div class="hint">Tracking server-side via GAS webhook</div>
+          </div>
+          <div class="fg">
+            <label>Test Event Code (opsional)</label>
+            <input type="text" id="bTestCode" placeholder="TEST12345">
+            <div class="hint">Cek di Meta Events Manager → Test Events. Hapus saat live.</div>
           </div>
         </div>
       </div>
@@ -172,6 +183,48 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
             </table>
             <button class="btn-add" type="button" id="btnAddRate">+ Tambah Wilayah</button>
           </div>
+          <hr class="fg-sep">
+          <div class="fg">
+            <label>Field yang ditampilkan</label>
+            <div class="field-toggles">
+              <label class="ftog"><input type="checkbox" id="fAlamat" checked> Alamat</label>
+              <label class="ftog"><input type="checkbox" id="fKecamatan" checked> Kecamatan</label>
+              <label class="ftog"><input type="checkbox" id="fKota" checked> Kota</label>
+              <label class="ftog"><input type="checkbox" id="fProvinsi"> Provinsi</label>
+              <label class="ftog"><input type="checkbox" id="fCatatan" checked> Catatan</label>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Metode Pembayaran</label>
+            <div class="pay-grid">
+              <label class="ftog"><input type="checkbox" class="cbPay" value="Transfer BCA" checked> Transfer BCA</label>
+              <label class="ftog"><input type="checkbox" class="cbPay" value="Transfer Mandiri" checked> Transfer Mandiri</label>
+              <label class="ftog"><input type="checkbox" class="cbPay" value="Transfer BNI"> Transfer BNI</label>
+              <label class="ftog"><input type="checkbox" class="cbPay" value="QRIS"> QRIS</label>
+              <label class="ftog"><input type="checkbox" class="cbPay" value="COD (Bayar di Tempat)" checked> COD (Bayar di Tempat)</label>
+            </div>
+          </div>
+          <!-- Upsell -->
+          <div class="toggle-block">
+            <div class="toggle-head" id="upsellHead">
+              <input type="checkbox" id="enableUpsell">
+              <span class="tl">🎁 Upsell Offer</span>
+            </div>
+            <div class="toggle-content" id="upsellBody" style="display:none">
+              <div class="fg">
+                <label>Teks Offer</label>
+                <input type="text" id="bUpsellText" placeholder="Tambah 1 lagi, hemat 20%!">
+              </div>
+              <div class="fg">
+                <label>Harga Upsell (Rp)</label>
+                <input type="number" id="bUpsellPrice" value="79000">
+              </div>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Teks Tombol Order</label>
+            <input type="text" id="bSubmitBtn" value="Kirim Order Sekarang 🚀">
+          </div>
           <div class="fg">
             <label>Warna Tema</label>
             <input type="color" id="bColor" value="#2563eb">
@@ -186,7 +239,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="gen-section">
     <button class="btn-gen" type="button" id="btnDownload">📥 Download HTML</button>
     <button class="btn-copy" type="button" id="btnCopy">📋 Copy HTML</button>
-    <p class="gen-note">File HTML self-contained — foto sudah embed, siap upload ke Vercel / GitHub Pages</p>
+    <p class="gen-note">Self-contained HTML — foto embed, siap upload ke Vercel / GitHub Pages</p>
   </div>
 
 </div>
@@ -204,7 +257,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 (function () {
   'use strict';
 
-  /* ── State ── */
   var heroBase64 = '';
   var options = ['Paket 1 (1 pcs) — Rp 99.000', 'Paket 2 (2 pcs) — Rp 179.000'];
   var rates = [
@@ -217,32 +269,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     { wilayah: 'Papua & Maluku', ongkir: 45000, estimasi: '7-14 hari' }
   ];
 
-  /* ── Restore draft (tanpa heroBase64 agar tidak overflow localStorage) ── */
+  /* Restore draft — try lpb4 then lpb3 (backward compat) */
   try {
-    var d = JSON.parse(localStorage.getItem('lpb3') || 'null');
+    var d = JSON.parse(localStorage.getItem('lpb4') || localStorage.getItem('lpb3') || 'null');
     if (d) {
-      if (d.pn)  el('bProductName').value = d.pn;
-      if (d.pr)  el('bPrice').value       = d.pr;
-      if (d.px)  el('bPixelId').value     = d.px;
-      if (d.wh)  el('bWebhook').value     = d.wh;
-      if (d.wa)  el('bWaNumber').value    = d.wa;
-      if (d.cl)  el('bColor').value       = d.cl;
-      if (d.ep)  { el('enablePixel').checked = true; show('pixelBody'); }
-      if (d.ef)  { el('enableForm').checked  = true; show('formBody');  }
+      if (d.pn) el('bProductName').value = d.pn;
+      if (d.pr) el('bPrice').value       = d.pr;
+      if (d.px) el('bPixelId').value     = d.px;
+      if (d.eo) el('bEventOpen').value   = d.eo;
+      if (d.es) el('bEventSubmit').value = d.es;
+      if (d.ct) el('bCapiToken').value   = d.ct;
+      if (d.tc) el('bTestCode').value    = d.tc;
+      if (d.wh) el('bWebhook').value     = d.wh;
+      if (d.wa) el('bWaNumber').value    = d.wa;
+      if (d.cl) el('bColor').value       = d.cl;
+      if (d.sb) el('bSubmitBtn').value   = d.sb;
+      if (d.ut) el('bUpsellText').value  = d.ut;
+      if (d.up) el('bUpsellPrice').value = d.up;
+      if (d.ep) { el('enablePixel').checked  = true; elShow('pixelBody');  }
+      if (d.ef) { el('enableForm').checked   = true; elShow('formBody');   }
+      if (d.eu) { el('enableUpsell').checked = true; elShow('upsellBody'); }
       if (d.opts) options = d.opts;
       if (d.rts)  rates   = d.rts;
+      if (d.ff) {
+        if (d.ff.a  !== undefined) el('fAlamat').checked    = d.ff.a;
+        if (d.ff.k  !== undefined) el('fKecamatan').checked = d.ff.k;
+        if (d.ff.kt !== undefined) el('fKota').checked      = d.ff.kt;
+        if (d.ff.p  !== undefined) el('fProvinsi').checked  = d.ff.p;
+        if (d.ff.c  !== undefined) el('fCatatan').checked   = d.ff.c;
+      }
+      if (d.pm) {
+        document.querySelectorAll('.cbPay').forEach(function (cb) {
+          cb.checked = d.pm.indexOf(cb.value) !== -1;
+        });
+      }
     }
   } catch (e) {}
 
   renderOptions();
   renderRates();
 
-  /* ── File upload (paling reliable: input[type=file] di dalam label) ── */
+  /* File upload */
   el('heroFile').addEventListener('change', function () {
     if (this.files && this.files[0]) readPhoto(this.files[0]);
   });
 
-  /* Drag & drop extra handler di atas label */
   var dz = el('dropZone');
   dz.addEventListener('dragover',  function (e) { e.preventDefault(); dz.classList.add('over'); });
   dz.addEventListener('dragleave', function ()  { dz.classList.remove('over'); });
@@ -257,8 +328,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     e.stopPropagation();
     heroBase64 = '';
     el('heroFile').value = '';
-    el('photoSrc', el('photoDone').querySelector('img'));
-    el('photoDone').style.display  = 'none';
+    el('heroPreview').src = '';
+    el('photoDone').style.display = 'none';
     dz.style.display = '';
     refresh();
   });
@@ -269,42 +340,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     r.onload = function (e) {
       heroBase64 = e.target.result;
       el('heroPreview').src = heroBase64;
-      dz.style.display               = 'none';
-      el('photoDone').style.display  = 'block';
+      dz.style.display              = 'none';
+      el('photoDone').style.display = 'block';
       refresh();
     };
     r.readAsDataURL(file);
   }
 
-  /* ── Toggle Pixel / Form ── */
-  ['pixelHead', 'formHead'].forEach(function (headId) {
+  /* Toggle blocks */
+  function setupToggle(headId, cbId, bodyId) {
     el(headId).addEventListener('click', function (e) {
-      var isPixel = headId === 'pixelHead';
-      var cbId    = isPixel ? 'enablePixel' : 'enableForm';
-      var bodyId  = isPixel ? 'pixelBody'   : 'formBody';
-      if (e.target.type === 'checkbox') return; // checkbox handles itself
+      if (e.target.type === 'checkbox') return;
       el(cbId).checked = !el(cbId).checked;
-      el(bodyId).style.display = el(cbId).checked ? 'block' : 'none';
+      el(bodyId).style.display = el(cbId).checked ? 'flex' : 'none';
       refresh();
     });
-  });
+    el(cbId).addEventListener('change', function () {
+      el(bodyId).style.display = this.checked ? 'flex' : 'none';
+      refresh();
+    });
+  }
 
-  el('enablePixel').addEventListener('change', function () {
-    el('pixelBody').style.display = this.checked ? 'block' : 'none';
-    refresh();
-  });
-  el('enableForm').addEventListener('change', function () {
-    el('formBody').style.display = this.checked ? 'block' : 'none';
-    refresh();
-  });
+  setupToggle('pixelHead',  'enablePixel',  'pixelBody');
+  setupToggle('formHead',   'enableForm',   'formBody');
+  setupToggle('upsellHead', 'enableUpsell', 'upsellBody');
 
-  /* Auto-refresh on any input change */
+  /* Auto-refresh */
   document.querySelectorAll('input, select, textarea').forEach(function (inp) {
     inp.addEventListener('input',  refresh);
     inp.addEventListener('change', refresh);
   });
 
-  /* ── Options ── */
+  /* Options */
   el('btnAddOpt').addEventListener('click', function () {
     options.push('Paket baru');
     renderOptions();
@@ -319,21 +386,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         + '</div>';
     }).join('');
     el('optionsList').querySelectorAll('input').forEach(function (inp) {
-      inp.addEventListener('input', function () {
-        options[+this.dataset.oi] = this.value;
-        refresh();
-      });
+      inp.addEventListener('input', function () { options[+this.dataset.oi] = this.value; refresh(); });
     });
     el('optionsList').querySelectorAll('.btn-rm').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        options.splice(+this.dataset.ri, 1);
-        renderOptions();
-        refresh();
-      });
+      btn.addEventListener('click', function () { options.splice(+this.dataset.ri, 1); renderOptions(); refresh(); });
     });
   }
 
-  /* ── Rates ── */
+  /* Rates */
   el('btnAddRate').addEventListener('click', function () {
     rates.push({ wilayah: 'Wilayah Baru', ongkir: 20000, estimasi: '3-5 hari' });
     renderRates();
@@ -343,9 +403,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   function renderRates() {
     el('ratesBody').innerHTML = rates.map(function (r, i) {
       return '<tr>'
-        + '<td><input value="' + esc(r.wilayah)   + '" data-ri="' + i + '" data-rk="wilayah"></td>'
-        + '<td><input type="number" value="' + r.ongkir  + '" data-ri="' + i + '" data-rk="ongkir"></td>'
-        + '<td><input value="' + esc(r.estimasi)  + '" data-ri="' + i + '" data-rk="estimasi"></td>'
+        + '<td><input value="' + esc(r.wilayah)  + '" data-ri="' + i + '" data-rk="wilayah"></td>'
+        + '<td><input type="number" value="' + r.ongkir + '" data-ri="' + i + '" data-rk="ongkir"></td>'
+        + '<td><input value="' + esc(r.estimasi) + '" data-ri="' + i + '" data-rk="estimasi"></td>'
         + '<td><button class="btn-rm" type="button" data-rr="' + i + '">&times;</button></td>'
         + '</tr>';
     }).join('');
@@ -357,15 +417,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       });
     });
     el('ratesBody').querySelectorAll('.btn-rm').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        rates.splice(+this.dataset.rr, 1);
-        renderRates();
-        refresh();
-      });
+      btn.addEventListener('click', function () { rates.splice(+this.dataset.rr, 1); renderRates(); refresh(); });
     });
   }
 
-  /* ── Refresh / save ── */
+  function getPayMethods() {
+    var pm = [];
+    document.querySelectorAll('.cbPay:checked').forEach(function (cb) { pm.push(cb.value); });
+    return pm;
+  }
+
+  /* Refresh */
   var timer;
   function refresh() {
     saveDraft();
@@ -375,30 +437,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
   function saveDraft() {
     try {
-      localStorage.setItem('lpb3', JSON.stringify({
+      localStorage.setItem('lpb4', JSON.stringify({
         pn: gv('bProductName'), pr: gv('bPrice'),
-        px: gv('bPixelId'),     wh: gv('bWebhook'),
+        px: gv('bPixelId'),     eo: gv('bEventOpen'),
+        es: gv('bEventSubmit'), ct: gv('bCapiToken'),
+        tc: gv('bTestCode'),    wh: gv('bWebhook'),
         wa: gv('bWaNumber'),    cl: gv('bColor'),
+        sb: gv('bSubmitBtn'),   ut: gv('bUpsellText'),
+        up: gv('bUpsellPrice'),
         ep: el('enablePixel').checked,
         ef: el('enableForm').checked,
-        opts: options.slice(),  rts: rates.slice()
+        eu: el('enableUpsell').checked,
+        opts: options.slice(), rts: rates.slice(),
+        ff: {
+          a:  el('fAlamat').checked,
+          k:  el('fKecamatan').checked,
+          kt: el('fKota').checked,
+          p:  el('fProvinsi').checked,
+          c:  el('fCatatan').checked
+        },
+        pm: getPayMethods()
       }));
     } catch (e) {}
   }
 
-  function doPreview() {
-    el('previewFrame').srcdoc = buildHTML();
-  }
+  function doPreview() { el('previewFrame').srcdoc = buildHTML(); }
 
   /* ── HTML Generator ── */
   function buildHTML() {
-    var usePixel = el('enablePixel').checked;
-    var useForm  = el('enableForm').checked;
-    var color    = gv('bColor') || '#2563eb';
-    var pixelId  = gv('bPixelId');
-    var produk   = gv('bProductName') || 'Produk';
+    var usePixel  = el('enablePixel').checked;
+    var useForm   = el('enableForm').checked;
+    var color     = gv('bColor') || '#2563eb';
+    var pixelId   = gv('bPixelId');
+    var eventOpen = gv('bEventOpen') || 'PageView';
+    var produk    = gv('bProductName') || 'Produk';
 
-    /* Placeholder SVG kalau belum ada foto */
     var imgSrc = heroBase64 ||
       'data:image/svg+xml,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">'
@@ -415,15 +488,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '<style>' + pageCSS(color) + '</style>\n'
       + '</head>\n<body>\n';
 
-    /* Pixel */
     if (usePixel && pixelId.trim()) {
-      html += pixelSnippet(pixelId.trim());
+      html += pixelSnippet(pixelId.trim(), eventOpen);
     }
 
-    /* Foto utama */
     html += '<div class="hero"><img src="' + imgSrc + '" alt="' + esc(produk) + '"></div>\n';
 
-    /* Form order */
     if (useForm) {
       html += formSection(color);
     }
@@ -446,7 +516,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '.price-tag .n{font-size:.78rem;color:#9ca3af}'
       + '.fg{margin-bottom:13px}'
       + '.fg label{display:block;font-size:.84rem;font-weight:600;margin-bottom:3px;color:#374151}'
-      + '.fg .req{color:#dc2626}'
       + '.fg input,.fg select,.fg textarea{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.93rem;font-family:inherit}'
       + '.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 15%,transparent)}'
       + '.fg textarea{resize:vertical;min-height:70px}'
@@ -461,6 +530,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '.trow.big{font-size:1rem;font-weight:700;padding-top:9px;margin-top:6px;border-top:2px solid #e5e7eb}'
       + '.trow.big span:last-child{color:var(--c)}'
       + '.ship-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 11px;font-size:.83rem;color:#1e40af;margin-top:5px;display:none}'
+      + '.upsell-box{background:#fffbeb;border:2px solid #fcd34d;border-radius:10px;padding:13px 15px;margin-bottom:14px}'
+      + '.upsell-box h3{font-size:.9rem;color:#92400e;margin-bottom:8px}'
+      + '.upsell-label{display:flex;align-items:center;gap:10px;cursor:pointer}'
+      + '.upsell-label input[type=checkbox]{width:18px;height:18px;accent-color:var(--c);cursor:pointer;flex-shrink:0}'
+      + '.upsell-label .utxt{font-size:.9rem;color:#374151;flex:1}'
+      + '.upsell-price{font-size:1rem;font-weight:800;color:var(--c);white-space:nowrap}'
       + '.btn-order{width:100%;padding:14px;background:var(--c);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}'
       + '.btn-order:hover{filter:brightness(1.1)}'
       + '.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none}'
@@ -473,20 +548,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       + '.msg a{color:inherit;font-weight:700;display:block;margin-top:6px}';
   }
 
-  function pixelSnippet(pid) {
+  function pixelSnippet(pid, eventOpen) {
     return '<script>!function(f,b,e,v,n,t,s){'
       + 'if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};'
       + 'if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];'
       + 't=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];'
       + 's.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");'
-      + 'fbq("init","' + pid + '");fbq("track","PageView");<\/script>\n';
+      + 'fbq("init","' + pid + '");fbq("track","' + eventOpen + '");<\/script>\n';
   }
 
   function formSection(color) {
-    var produk  = gv('bProductName') || 'Produk';
-    var price   = parseInt(gv('bPrice')) || 99000;
-    var webhook = gv('bWebhook') || '';
-    var waNum   = gv('bWaNumber') || '';
+    var produk      = gv('bProductName') || 'Produk';
+    var price       = parseInt(gv('bPrice')) || 99000;
+    var webhook     = gv('bWebhook') || '';
+    var waNum       = gv('bWaNumber') || '';
+    var eventSub    = gv('bEventSubmit') || 'Purchase';
+    var capiToken   = gv('bCapiToken') || '';
+    var testCode    = gv('bTestCode') || '';
+    var pixelId     = el('enablePixel').checked ? gv('bPixelId') : '';
+    var submitBtn   = gv('bSubmitBtn') || 'Kirim Order Sekarang 🚀';
+    var useUpsell   = el('enableUpsell').checked;
+    var upsellText  = gv('bUpsellText') || '';
+    var upsellPrice = parseInt(gv('bUpsellPrice')) || 0;
+    var payMethods  = getPayMethods();
+    if (!payMethods.length) payMethods = ['Transfer BCA', 'COD (Bayar di Tempat)'];
+
+    var fields = {
+      alamat:    el('fAlamat').checked,
+      kecamatan: el('fKecamatan').checked,
+      kota:      el('fKota').checked,
+      provinsi:  el('fProvinsi').checked,
+      catatan:   el('fCatatan').checked
+    };
 
     var optsHtml = options.map(function (o) {
       return '<option value="' + esc(o) + '">' + esc(o) + '</option>';
@@ -497,115 +590,183 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         + ' — Rp ' + r.ongkir.toLocaleString('id-ID') + '</option>';
     }).join('');
 
+    var payHtml = payMethods.map(function (p) {
+      return '<option>' + esc(p) + '</option>';
+    }).join('');
+
     var cfg = {
-      produk:  produk,
-      harga:   price,
-      opts:    options.slice(),
-      webhook: webhook,
-      wa:      waNum,
-      rates:   rates.slice(),
-      color:   color
+      produk: produk, harga: price, opts: options.slice(),
+      webhook: webhook, wa: waNum, rates: rates.slice(), color: color,
+      eventSub: eventSub, pixelId: pixelId,
+      capiToken: capiToken, testCode: testCode,
+      upsell: { enabled: useUpsell && !!upsellText, text: upsellText, price: upsellPrice },
+      fields: fields
     };
 
-    return '<script>var _C=' + JSON.stringify(cfg) + ';<\/script>\n'
-      + '<section class="order">\n'
-      + '<div class="order-box">\n'
+    var html = '<script>var _C=' + JSON.stringify(cfg) + ';<\/script>\n'
+      + '<section class="order">\n<div class="order-box">\n'
       + '<h2>Order ' + esc(produk) + '</h2>\n'
       + '<div class="price-tag"><div class="p">Rp ' + price.toLocaleString('id-ID') + '</div>'
       + '<div class="n">Harga spesial — stok terbatas</div></div>\n'
       + '<form id="oFrm" novalidate>\n'
-      + _fg('Nama Lengkap', '<input type="text" name="nama" required placeholder="Nama lengkap Anda"><div class="err">Wajib diisi</div>')
-      + _fg('Nomor WhatsApp', '<input type="tel" name="wa" required placeholder="08xxxxxxxxxx" pattern="^08[0-9]{8,13}$"><div class="hint">Format: 08xxxxxxxxxx</div><div class="err">Nomor WA tidak valid</div>')
-      + _fg('Alamat Lengkap', '<textarea name="alamat" required placeholder="Jalan, RT/RW, Kelurahan, Kode Pos"></textarea><div class="err">Wajib diisi</div>')
-      + '<div class="row2">'
-      + _fg('Kecamatan', '<input type="text" name="kecamatan" placeholder="Kecamatan">')
-      + _fg('Kota/Kab', '<input type="text" name="kota" placeholder="Kota">')
-      + '</div>\n'
-      + _fg('Pilihan Produk', '<select name="produk" id="sProduk" required onchange="hCalc()"><option value="">— Pilih —</option>' + optsHtml + '</select>')
+      + _fg('Nama Lengkap <span class="req">*</span>',
+          '<input type="text" name="nama" required placeholder="Nama lengkap Anda"><div class="err">Wajib diisi</div>')
+      + _fg('Nomor WhatsApp <span class="req">*</span>',
+          '<input type="tel" name="wa" required placeholder="08xxxxxxxxxx" pattern="^08[0-9]{8,13}$">'
+          + '<div class="hint">Format: 08xxxxxxxxxx</div><div class="err">Nomor WA tidak valid</div>');
+
+    if (fields.alamat) {
+      html += _fg('Alamat Lengkap <span class="req">*</span>',
+        '<textarea name="alamat" required placeholder="Jalan, RT/RW, Kelurahan, Kode Pos"></textarea>'
+        + '<div class="err">Wajib diisi</div>');
+    }
+
+    if (fields.kecamatan && fields.kota) {
+      html += '<div class="row2">'
+        + _fg('Kecamatan', '<input type="text" name="kecamatan" placeholder="Kecamatan">')
+        + _fg('Kota/Kab',  '<input type="text" name="kota" placeholder="Kota">')
+        + '</div>\n';
+    } else if (fields.kecamatan) {
+      html += _fg('Kecamatan', '<input type="text" name="kecamatan" placeholder="Kecamatan">');
+    } else if (fields.kota) {
+      html += _fg('Kota/Kab', '<input type="text" name="kota" placeholder="Kota">');
+    }
+
+    if (fields.provinsi) {
+      html += _fg('Provinsi', '<input type="text" name="provinsi" placeholder="Provinsi">');
+    }
+
+    html += _fg('Pilihan Produk <span class="req">*</span>',
+        '<select name="produk" id="sProduk" required onchange="hCalc()">'
+        + '<option value="">— Pilih —</option>' + optsHtml + '</select>')
       + _fg('Jumlah', '<input type="number" name="qty" value="1" min="1" max="99" onchange="hCalc()">')
-      + _fg('Wilayah Pengiriman', '<select name="wilayahIdx" id="sWilayah" required onchange="hWilayah()"><option value="">— Pilih wilayah —</option>' + wilayahHtml + '</select><div class="ship-note" id="shipNote"></div>')
-      + '<input type="hidden" name="ongkir" id="hOngkir" value="0">\n'
-      + '<div class="totals">'
+      + _fg('Wilayah Pengiriman <span class="req">*</span>',
+          '<select name="wilayahIdx" id="sWilayah" required onchange="hWilayah()">'
+          + '<option value="">— Pilih wilayah —</option>' + wilayahHtml + '</select>'
+          + '<div class="ship-note" id="shipNote"></div>')
+      + '<input type="hidden" name="ongkir" id="hOngkir" value="0">\n';
+
+    if (cfg.upsell.enabled) {
+      html += '<div class="upsell-box"><h3>🎁 Penawaran Spesial</h3>'
+        + '<label class="upsell-label">'
+        + '<input type="checkbox" name="upsell" id="cbUpsell" onchange="hCalc()">'
+        + '<span class="utxt">' + esc(upsellText) + '</span>'
+        + '<span class="upsell-price">+Rp ' + upsellPrice.toLocaleString('id-ID') + '</span>'
+        + '</label></div>\n';
+    }
+
+    html += '<div class="totals">'
       + '<div class="trow"><span>Subtotal</span><strong id="tSub">Rp 0</strong></div>'
       + '<div class="trow"><span>Ongkir</span><strong id="tOngkir">Rp 0</strong></div>'
+      + (cfg.upsell.enabled ? '<div class="trow"><span>Upsell</span><strong id="tUp">Rp 0</strong></div>' : '')
       + '<div class="trow big"><span>Total</span><span id="tTotal">Rp 0</span></div>'
       + '</div>\n'
-      + _fg('Metode Bayar', '<select name="bayar" required><option value="">— Pilih —</option><option>Transfer BCA</option><option>Transfer Mandiri</option><option>COD (Bayar di Tempat)</option></select>')
-      + _fg('Catatan', '<textarea name="catatan" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>')
-      + '<button type="submit" class="btn-order" id="btnOrd"><span class="spinner"></span><span class="lbl">Kirim Order Sekarang 🚀</span></button>\n'
+      + _fg('Metode Bayar <span class="req">*</span>',
+          '<select name="metodeBayar" required><option value="">— Pilih —</option>' + payHtml + '</select>');
+
+    if (fields.catatan) {
+      html += _fg('Catatan', '<textarea name="catatan" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>');
+    }
+
+    html += '<button type="submit" class="btn-order" id="btnOrd">'
+      + '<span class="spinner"></span><span class="lbl">' + esc(submitBtn) + '</span></button>\n'
       + '</form>\n'
-      + '<div class="msg ok" id="mOk">✅ Order berhasil dikirim! CS akan hubungi via WhatsApp.<a id="waOk" href="#" target="_blank">Chat via WhatsApp →</a></div>\n'
-      + '<div class="msg er" id="mEr">❌ Gagal kirim. Coba lagi atau order via WA.<a id="waEr" href="#" target="_blank">Order via WhatsApp →</a></div>\n'
-      + '</div>\n</section>\n'
-      + '<script>\n(function(){\n'
-      + 'var C=_C,ok=0,sub=0;\n'
+      + '<div class="msg ok" id="mOk">✅ Order berhasil dikirim! CS akan hubungi via WhatsApp.'
+      + '<a id="waOk" href="#" target="_blank">Chat via WhatsApp →</a></div>\n'
+      + '<div class="msg er" id="mEr">❌ Gagal kirim. Coba lagi atau order via WA.'
+      + '<a id="waEr" href="#" target="_blank">Order via WhatsApp →</a></div>\n'
+      + '</div>\n</section>\n';
+
+    /* Inline script for generated LP */
+    html += '<script>\n(function(){\n'
+      + 'var C=_C,ok=0,sub=0,upAmt=0;\n'
       + 'document.documentElement.style.setProperty("--c",C.color);\n'
       + 'function fmt(n){return"Rp "+n.toLocaleString("id-ID");}\n'
-      + 'function waHref(n){return"https://wa.me/"+C.wa+"?text="+encodeURIComponent("Halo, saya mau order "+C.produk+" atas nama "+(n||""));}\n'
-      + 'function hCalc(){'
-      + 'var q=parseInt(document.querySelector("[name=qty]").value)||1;'
-      + 'sub=C.harga*q;'
-      + 'var t=sub+ok;'
-      + 'document.getElementById("tSub").textContent=fmt(sub);'
-      + 'document.getElementById("tOngkir").textContent=ok?fmt(ok):"Gratis";'
-      + 'document.getElementById("tTotal").textContent=fmt(t);'
+      + 'function waHref(n){return"https://wa.me/"+C.wa+"?text="+encodeURIComponent("Halo, saya mau order "+C.produk+(n?" atas nama "+n:""));}\n'
+      + 'function getCookie(n){var v="; "+document.cookie,p=v.split("; "+n+"=");return p.length===2?p.pop().split(";").shift():"";}\n'
+      + 'function hCalc(){\n'
+      + '  var q=parseInt(document.querySelector("[name=qty]").value)||1;\n'
+      + '  sub=C.harga*q;\n'
+      + '  var cbUp=document.getElementById("cbUpsell");\n'
+      + '  upAmt=(cbUp&&cbUp.checked&&C.upsell.enabled)?C.upsell.price:0;\n'
+      + '  var t=sub+ok+upAmt;\n'
+      + '  var e;\n'
+      + '  e=document.getElementById("tSub");    if(e)e.textContent=fmt(sub);\n'
+      + '  e=document.getElementById("tOngkir"); if(e)e.textContent=ok?fmt(ok):"Gratis";\n'
+      + '  e=document.getElementById("tUp");     if(e)e.textContent=fmt(upAmt);\n'
+      + '  e=document.getElementById("tTotal");  if(e)e.textContent=fmt(t);\n'
       + '}\n'
       + 'window.hCalc=hCalc;hCalc();\n'
-      + 'window.hWilayah=function(){'
-      + 'var s=document.getElementById("sWilayah"),idx=parseInt(s.value);'
-      + 'var note=document.getElementById("shipNote");'
-      + 'if(isNaN(idx)){ok=0;note.style.display="none";hCalc();return;}'
-      + 'var r=C.rates[idx];ok=r.ongkir;'
-      + 'document.getElementById("hOngkir").value=r.ongkir;'
-      + 'note.textContent="Estimasi: "+r.estimasi;note.style.display="block";'
-      + 'hCalc();'
+      + 'window.hWilayah=function(){\n'
+      + '  var s=document.getElementById("sWilayah"),idx=parseInt(s.value);\n'
+      + '  var note=document.getElementById("shipNote");\n'
+      + '  if(isNaN(idx)){ok=0;note.style.display="none";hCalc();return;}\n'
+      + '  var r=C.rates[idx];ok=r.ongkir;\n'
+      + '  document.getElementById("hOngkir").value=r.ongkir;\n'
+      + '  note.textContent="Estimasi: "+r.estimasi;note.style.display="block";\n'
+      + '  hCalc();\n'
       + '};\n'
-      + 'function validate(){'
-      + 'var ok=true;'
-      + 'document.querySelectorAll("[required]").forEach(function(f){'
-      + 'var g=f.closest(".fg");if(g)g.classList.remove("bad");'
-      + 'var empty=f.tagName==="SELECT"?!f.value:!f.value.trim();'
-      + 'var pat=f.pattern&&!new RegExp(f.pattern).test(f.value);'
-      + 'if(empty||pat){if(g)g.classList.add("bad");ok=false;}'
-      + '});return ok;'
+      + 'function validate(){\n'
+      + '  var valid=true;\n'
+      + '  document.querySelectorAll("[required]").forEach(function(f){\n'
+      + '    var g=f.closest(".fg");if(g)g.classList.remove("bad");\n'
+      + '    var empty=f.tagName==="SELECT"?!f.value:!f.value.trim();\n'
+      + '    var pat=f.pattern&&!new RegExp(f.pattern).test(f.value);\n'
+      + '    if(empty||pat){if(g)g.classList.add("bad");valid=false;}\n'
+      + '  });return valid;\n'
       + '}\n'
-      + 'document.getElementById("oFrm").addEventListener("submit",function(e){'
-      + 'e.preventDefault();if(!validate())return;'
-      + 'var btn=document.getElementById("btnOrd");'
-      + 'var fd=new FormData(e.target);'
-      + 'var qty=parseInt(fd.get("qty"))||1,total=sub+ok;'
-      + 'var data={'
-      + 'nama:fd.get("nama"),wa:fd.get("wa"),alamat:fd.get("alamat"),'
-      + 'kecamatan:fd.get("kecamatan")||"",kota:fd.get("kota")||"",'
-      + 'produk:fd.get("produk"),qty:qty,ongkir:ok,total:total,'
-      + 'bayar:fd.get("bayar"),catatan:fd.get("catatan")||"",'
-      + 'src:window.location.pathname'
-      + '};'
-      + 'btn.classList.add("loading");btn.disabled=true;'
-      + 'document.getElementById("mOk").classList.remove("on");'
-      + 'document.getElementById("mEr").classList.remove("on");'
-      + 'fetch(C.webhook,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})'
-      + '.then(function(){'
-      + 'btn.classList.remove("loading");btn.disabled=false;'
-      + 'var mok=document.getElementById("mOk");mok.classList.add("on");'
-      + 'document.getElementById("waOk").href=waHref(data.nama);'
-      + 'if(typeof fbq==="function")fbq("track","Purchase",{value:total,currency:"IDR"});'
-      + 'e.target.reset();hCalc();'
-      + '})'
-      + '.catch(function(){'
-      + 'btn.classList.remove("loading");btn.disabled=false;'
-      + 'document.getElementById("mEr").classList.add("on");'
-      + 'document.getElementById("waEr").href=waHref("");'
-      + '});'
+      + 'document.getElementById("oFrm").addEventListener("submit",function(e){\n'
+      + '  e.preventDefault();if(!validate())return;\n'
+      + '  var btn=document.getElementById("btnOrd");\n'
+      + '  var fd=new FormData(e.target);\n'
+      + '  var qty=parseInt(fd.get("qty"))||1,total=sub+ok+upAmt;\n'
+      + '  var cbUp=document.getElementById("cbUpsell");\n'
+      + '  var widx=parseInt(fd.get("wilayahIdx"));\n'
+      + '  var data={\n'
+      + '    nama:fd.get("nama"),wa:fd.get("wa"),\n'
+      + '    alamat:fd.get("alamat")||"",\n'
+      + '    kecamatan:fd.get("kecamatan")||"",\n'
+      + '    kota:fd.get("kota")||"",\n'
+      + '    provinsi:fd.get("provinsi")||"",\n'
+      + '    wilayah:(!isNaN(widx)&&C.rates[widx])?C.rates[widx].wilayah:"",\n'
+      + '    produk:fd.get("produk"),qty:qty,ongkir:ok,total:total,\n'
+      + '    metodeBayar:fd.get("metodeBayar"),\n'
+      + '    catatan:fd.get("catatan")||"",\n'
+      + '    upsell:cbUp&&cbUp.checked?C.upsell.text:"",\n'
+      + '    lpSource:window.location.href\n'
+      + '  };\n'
+      + '  if(C.capiToken||C.pixelId){\n'
+      + '    data._capi={pixelId:C.pixelId,token:C.capiToken,testCode:C.testCode,\n'
+      + '      event:C.eventSub,value:total,currency:"IDR",\n'
+      + '      fbc:getCookie("_fbc"),fbp:getCookie("_fbp")};\n'
+      + '  }\n'
+      + '  btn.classList.add("loading");btn.disabled=true;\n'
+      + '  document.getElementById("mOk").classList.remove("on");\n'
+      + '  document.getElementById("mEr").classList.remove("on");\n'
+      + '  fetch(C.webhook,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})\n'
+      + '  .then(function(){\n'
+      + '    btn.classList.remove("loading");btn.disabled=false;\n'
+      + '    document.getElementById("mOk").classList.add("on");\n'
+      + '    document.getElementById("waOk").href=waHref(data.nama);\n'
+      + '    if(typeof fbq==="function"&&C.pixelId)fbq("track",C.eventSub,{value:total,currency:"IDR"});\n'
+      + '    e.target.reset();hCalc();\n'
+      + '  })\n'
+      + '  .catch(function(){\n'
+      + '    btn.classList.remove("loading");btn.disabled=false;\n'
+      + '    document.getElementById("mEr").classList.add("on");\n'
+      + '    document.getElementById("waEr").href=waHref("");\n'
+      + '  });\n'
       + '});\n'
       + '})();\n<\/script>\n';
+
+    return html;
   }
 
   function _fg(label, inner) {
     return '<div class="fg"><label>' + label + '</label>' + inner + '</div>\n';
   }
 
-  /* ── Download / Copy ── */
+  /* Download / Copy */
   el('btnDownload').addEventListener('click', function () {
     var blob = new Blob([buildHTML()], { type: 'text/html' });
     var a = document.createElement('a');
@@ -632,16 +793,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       });
   });
 
-  /* ── Helpers ── */
+  /* Helpers */
   function el(id) { return document.getElementById(id); }
   function gv(id) { var e = el(id); return e ? e.value : ''; }
-  function show(id) { var e = el(id); if (e) e.style.display = 'block'; }
+  function elShow(id) { var e = el(id); if (e) e.style.display = 'flex'; }
   function esc(s) {
-    return s ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-               .replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
+    return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
   }
 
-  /* Initial preview */
   setTimeout(doPreview, 200);
 
 })();

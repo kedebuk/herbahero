@@ -8,6 +8,7 @@
  * 4. Copy URL, paste ke LP_CONFIG.webhookUrl
  *
  * Header row otomatis dibuat kalau belum ada.
+ * Mendukung Facebook Conversions API (CAPI) server-side.
  */
 
 var SHEET_NAME = 'Orders';
@@ -17,8 +18,8 @@ function getSheet() {
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(['ID','Timestamp','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','LPSource','Status']);
-    sh.getRange('A1:Q1').setFontWeight('bold');
+    sh.appendRow(['ID','Timestamp','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Upsell','LPSource','Status']);
+    sh.getRange('A1:R1').setFontWeight('bold');
   }
   return sh;
 }
@@ -29,21 +30,98 @@ function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+/* ── SHA-256 helper untuk CAPI user data hashing ── */
+function sha256Hex(str) {
+  var raw = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    (str || '').toLowerCase().trim(),
+    Utilities.Charset.UTF_8
+  );
+  return raw.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+}
+
+/* Normalisasi nomor WA ke format internasional tanpa '+' */
+function normalizePhone(wa) {
+  var n = (wa || '').replace(/\D/g, '');
+  if (n.charAt(0) === '0') n = '62' + n.slice(1);
+  if (n.slice(0, 2) !== '62') n = '62' + n;
+  return n;
+}
+
+/* ── Kirim event ke Facebook Conversions API ── */
+function sendCAPI(d, orderId) {
+  var c = d._capi;
+  if (!c || !c.token || !c.pixelId) return;
+  try {
+    var ud = {};
+    if (d.wa)   ud.ph = [sha256Hex(normalizePhone(d.wa))];
+    if (d.nama) ud.fn = [sha256Hex(d.nama.split(' ')[0])];
+    if (c.fbc && c.fbc !== '') ud.fbc = c.fbc;
+    if (c.fbp && c.fbp !== '') ud.fbp = c.fbp;
+
+    var eventData = {
+      event_name:       c.event || 'Purchase',
+      event_time:       Math.floor(new Date().getTime() / 1000),
+      action_source:    'website',
+      event_source_url: d.lpSource || d.src || '',
+      event_id:         orderId,
+      user_data:        ud,
+      custom_data: {
+        value:    c.value || d.total || 0,
+        currency: 'IDR'
+      }
+    };
+
+    var payload = { data: [eventData] };
+    if (c.testCode && c.testCode !== '') payload.test_event_code = c.testCode;
+
+    var url = 'https://graph.facebook.com/v19.0/' + c.pixelId
+      + '/events?access_token=' + encodeURIComponent(c.token);
+
+    UrlFetchApp.fetch(url, {
+      method:           'post',
+      contentType:      'application/json',
+      payload:          JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch (err) {
+    Logger.log('CAPI error: ' + err.toString());
+  }
+}
+
 function doPost(e) {
   try {
     var d = JSON.parse(e.postData.contents);
     var sh = getSheet();
     var id = genId();
-    var ts = new Date().toLocaleString('id-ID', {timeZone:'Asia/Jakarta'});
+    var ts = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+
     sh.appendRow([
-      id, ts, d.nama||'', d.wa||'', d.alamat||'', d.kecamatan||'', d.kota||'',
-      d.provinsi||'', d.wilayah||'', d.produk||'', d.qty||1,
-      d.ongkir||0, d.total||0, d.metodeBayar||'', d.catatan||'',
-      d.lpSource||'', 'Pending'
+      id, ts,
+      d.nama       || '',
+      d.wa         || '',
+      d.alamat     || '',
+      d.kecamatan  || '',
+      d.kota       || '',
+      d.provinsi   || '',
+      d.wilayah    || '',
+      d.produk     || '',
+      d.qty        || 1,
+      d.ongkir     || 0,
+      d.total      || 0,
+      d.metodeBayar || d.bayar || '',
+      d.catatan    || '',
+      d.upsell     || '',
+      d.lpSource   || d.src || '',
+      'Pending'
     ]);
-    return json({success:true, orderId:id});
-  } catch(err) {
-    return json({success:false, error:err.toString()});
+
+    /* Kirim CAPI server-side (tidak mempengaruhi respons order) */
+    sendCAPI(d, id);
+
+    return json({ success: true, orderId: id });
+  } catch (err) {
+    return json({ success: false, error: err.toString() });
   }
 }
 
@@ -61,24 +139,24 @@ function doGet(e) {
         for (var j = 0; j < headers.length; j++) row[headers[j].toString().toLowerCase()] = data[i][j];
         orders.push(row);
       }
-      return json({success:true, orders:orders});
+      return json({ success: true, orders: orders });
     }
     if (action === 'update_status') {
-      var tid = p.id||'';
-      var ns = p.status||'';
-      if (!tid || !ns) return json({success:false, error:'Missing id or status'});
+      var tid = p.id || '';
+      var ns  = p.status || '';
+      if (!tid || !ns) return json({ success: false, error: 'Missing id or status' });
       var sh = getSheet();
       var data = sh.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
         if (data[i][0] === tid) {
-          sh.getRange(i+1, 17).setValue(ns);
-          return json({success:true});
+          sh.getRange(i + 1, 18).setValue(ns);
+          return json({ success: true });
         }
       }
-      return json({success:false, error:'Order not found'});
+      return json({ success: false, error: 'Order not found' });
     }
-    return json({success:false, error:'Unknown action'});
-  } catch(err) {
-    return json({success:false, error:err.toString()});
+    return json({ success: false, error: 'Unknown action' });
+  } catch (err) {
+    return json({ success: false, error: err.toString() });
   }
 }
