@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Media Library — Herbahero</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.topbar h1{font-size:1.05rem;font-weight:700;white-space:nowrap}
+.back-link{color:#6b7280;text-decoration:none;font-size:.85rem;white-space:nowrap}
+.back-link:hover{color:#111}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn-new{padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-new:hover{background:#1d4ed8}
+.btn-icon{padding:7px 10px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;font-size:.85rem;cursor:pointer}
+.btn-icon:hover{background:#e5e7eb;color:#374151}
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+.no-token{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px;text-align:center}
+.no-token h2{font-size:1.1rem;margin-bottom:8px}
+.no-token p{color:#6b7280;font-size:.9rem;margin-bottom:16px}
+.no-token a{display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:20px}
+.card-head{padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card-head h2{font-size:.95rem;font-weight:700}
+.search-bar{padding:8px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:.88rem;width:220px}
+.search-bar:focus{outline:none;border-color:#2563eb}
+
+/* Upload zone */
+.upload-zone{border:2px dashed #d1d5db;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#fafafa;position:relative;margin-bottom:20px}
+.upload-zone:hover,.upload-zone.over{border-color:#2563eb;background:#eff6ff}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone .uz-icon{font-size:2.5rem}
+.upload-zone .uz-text{font-size:.9rem;color:#6b7280;margin-top:8px}
+.upload-zone .uz-text strong{color:#2563eb}
+.upload-progress{display:none;margin-bottom:20px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px}
+.upload-progress .prog-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:8px}
+.upload-progress .prog-fill{height:100%;background:#2563eb;border-radius:3px;width:0%;transition:width .3s}
+.upload-progress .prog-text{font-size:.85rem;color:#6b7280}
+
+/* Gallery grid */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px 20px}
+.gallery-item{position:relative;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;transition:box-shadow .2s}
+.gallery-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.gallery-item img{width:100%;height:140px;object-fit:cover;display:block}
+.gallery-item .item-info{padding:8px 10px}
+.gallery-item .item-name{font-size:.78rem;color:#374151;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gallery-item .item-actions{display:flex;gap:4px;margin-top:6px}
+.gallery-item .item-actions button{flex:1;padding:5px;border-radius:5px;font-size:.72rem;font-weight:600;cursor:pointer;border:1px solid}
+.btn-copy-url{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.btn-copy-url:hover{background:#dbeafe}
+.btn-del{background:#fff;color:#dc2626;border-color:#fca5a5}
+.btn-del:hover{background:#fee2e2}
+
+.empty-state{padding:48px 24px;text-align:center;color:#9ca3af}
+.empty-state .es-icon{font-size:3rem;margin-bottom:12px}
+.empty-state h3{font-size:1rem;color:#6b7280;margin-bottom:8px}
+.empty-state p{font-size:.88rem}
+
+.toast{position:fixed;bottom:20px;right:20px;background:#1f2937;color:#fff;padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:999;display:none;max-width:320px}
+.toast.on{display:block}
+.toast.ok{background:#16a34a}
+.toast.er{background:#dc2626}
+
+.skeleton{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media(max-width:640px){
+  .gallery{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px}
+  .search-bar{width:140px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="../" class="back-link">&larr; Hub</a>
+    <h1>🖼️ Media Library</h1>
+  </div>
+  <div class="topbar-right">
+    <a href="/admin/pages.html" class="btn-icon">📄 LP Manager</a>
+    <a href="/admin/settings.html" class="btn-icon" title="Settings">⚙️</a>
+  </div>
+</div>
+
+<div class="container" id="appContainer">
+  <!-- Upload Zone -->
+  <label class="upload-zone" id="uploadZone">
+    <div class="uz-icon">📤</div>
+    <div class="uz-text">Drag &amp; drop gambar atau <strong>klik di sini</strong> untuk upload<br><small style="color:#9ca3af">Hanya file gambar (JPG, PNG, GIF, WebP)</small></div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </label>
+
+  <div class="upload-progress" id="uploadProgress">
+    <div class="prog-text" id="progText">Uploading...</div>
+    <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+
+  <!-- Gallery -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Galeri Media</h2>
+      <input class="search-bar" id="searchBox" placeholder="🔍 Cari file..." oninput="filterMedia(this.value)">
+    </div>
+    <div id="galleryContainer">
+      <div class="empty-state" id="emptyState">
+        <div class="es-icon">🖼️</div>
+        <h3>Belum ada media</h3>
+        <p>Upload gambar pertamamu menggunakan area di atas.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var ST = { TOKEN:'gh_token', OWNER:'gh_owner', REPO:'gh_repo' };
+  var allMedia = [];
+
+  if(!localStorage.getItem(ST.TOKEN)){
+    document.getElementById('appContainer').innerHTML =
+      '<div class="no-token"><h2>⚙️ Setup GitHub Token</h2>'
+      +'<p>Untuk menggunakan Media Library, atur GitHub Token terlebih dahulu.</p>'
+      +'<a href="/admin/settings.html">Buka Settings GitHub →</a></div>';
+    return;
+  }
+
+  function ghHeaders(){
+    return {
+      'Authorization':'Bearer '+(localStorage.getItem(ST.TOKEN)||''),
+      'Accept':'application/vnd.github+json',
+      'Content-Type':'application/json'
+    };
+  }
+  function owner(){ return localStorage.getItem(ST.OWNER)||'kedebuk'; }
+  function repo(){ return localStorage.getItem(ST.REPO)||'herbahero'; }
+  function ghBase(){ return 'https://api.github.com/repos/'+owner()+'/'+repo()+'/contents/'; }
+  function rawUrl(filename){ return 'https://raw.githubusercontent.com/'+owner()+'/'+repo()+'/main/media/'+filename; }
+
+  /* Load gallery */
+  loadMedia();
+
+  function loadMedia(){
+    var gc = document.getElementById('galleryContainer');
+    gc.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af">⏳ Memuat media...</div>';
+
+    fetch(ghBase()+'media/', {headers:ghHeaders()})
+    .then(function(r){
+      if(r.status===404) return [];
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    })
+    .then(function(files){
+      if(!Array.isArray(files)) files = [];
+      allMedia = files.filter(function(f){ return f.type==='file'; });
+      renderGallery(allMedia);
+    })
+    .catch(function(err){
+      gc.innerHTML = '<div style="padding:24px;text-align:center;color:#dc2626">❌ Gagal memuat: '+err.message+'</div>';
+    });
+  }
+
+  function renderGallery(items){
+    var gc = document.getElementById('galleryContainer');
+    if(!items.length){
+      gc.innerHTML = '<div class="empty-state"><div class="es-icon">🖼️</div>'
+        +'<h3>Belum ada media</h3><p>Upload gambar pertamamu menggunakan area di atas.</p></div>';
+      return;
+    }
+    var h = '<div class="gallery">';
+    items.forEach(function(f){
+      var url = rawUrl(f.name);
+      h += '<div class="gallery-item" data-name="'+esc(f.name)+'">'
+        +'<img src="'+esc(url)+'" alt="'+esc(f.name)+'" loading="lazy">'
+        +'<div class="item-info">'
+        +'<div class="item-name" title="'+esc(f.name)+'">'+esc(f.name)+'</div>'
+        +'<div class="item-actions">'
+        +'<button class="btn-copy-url" onclick="copyMediaUrl(\''+esc(url)+'\')">📋 Copy URL</button>'
+        +'<button class="btn-del" onclick="deleteMedia(\''+esc(f.name)+'\',\''+esc(f.sha)+'\')">🗑 Hapus</button>'
+        +'</div></div></div>';
+    });
+    h += '</div>';
+    gc.innerHTML = h;
+  }
+
+  /* Upload */
+  var uploadZone = document.getElementById('uploadZone');
+  var fileInput = document.getElementById('fileInput');
+
+  uploadZone.addEventListener('dragover', function(e){ e.preventDefault(); uploadZone.classList.add('over'); });
+  uploadZone.addEventListener('dragleave', function(){ uploadZone.classList.remove('over'); });
+  uploadZone.addEventListener('drop', function(e){
+    e.preventDefault();
+    uploadZone.classList.remove('over');
+    var files = e.dataTransfer.files;
+    if(files.length) uploadFiles(files);
+  });
+  fileInput.addEventListener('change', function(){
+    if(this.files.length) uploadFiles(this.files);
+    this.value = '';
+  });
+
+  function uploadFiles(fileList){
+    var files = [];
+    for(var i=0;i<fileList.length;i++){
+      if(fileList[i].type.startsWith('image/')) files.push(fileList[i]);
+    }
+    if(!files.length){ showToast('❌ Hanya file gambar yang diterima.','er'); return; }
+
+    var prog = document.getElementById('uploadProgress');
+    var progText = document.getElementById('progText');
+    var progFill = document.getElementById('progFill');
+    prog.style.display = 'block';
+    var done = 0;
+
+    function uploadNext(){
+      if(done>=files.length){
+        prog.style.display = 'none';
+        progFill.style.width = '0%';
+        showToast('✅ '+done+' file berhasil diupload!','ok');
+        loadMedia();
+        return;
+      }
+      var file = files[done];
+      progText.textContent = 'Uploading '+(done+1)+'/'+files.length+': '+file.name;
+      progFill.style.width = Math.round((done/files.length)*100)+'%';
+
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var base64 = e.target.result.split(',')[1];
+        var path = 'media/'+file.name;
+
+        // Get existing SHA first
+        fetch(ghBase()+path, {headers:ghHeaders()})
+        .then(function(r){ return r.ok ? r.json() : {sha:null}; })
+        .then(function(d){
+          var body = { message:'Upload media: '+file.name, content:base64 };
+          if(d.sha) body.sha = d.sha;
+          return fetch(ghBase()+path, { method:'PUT', headers:ghHeaders(), body:JSON.stringify(body) });
+        })
+        .then(function(r){
+          if(!r.ok) return r.json().then(function(e){ throw new Error(e.message||r.status); });
+          done++;
+          progFill.style.width = Math.round((done/files.length)*100)+'%';
+          uploadNext();
+        })
+        .catch(function(err){
+          showToast('❌ Gagal upload '+file.name+': '+err.message,'er');
+          done++;
+          uploadNext();
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+    uploadNext();
+  }
+
+  /* Delete */
+  window.deleteMedia = function(name, sha){
+    if(!confirm('Hapus "'+name+'"? Tidak bisa di-undo.')) return;
+    showToast('⏳ Menghapus '+name+'...','');
+    fetch(ghBase()+'media/'+name, {
+      method:'DELETE',
+      headers:ghHeaders(),
+      body:JSON.stringify({ message:'Delete media: '+name, sha:sha })
+    })
+    .then(function(r){
+      if(!r.ok) return r.json().then(function(e){ throw new Error(e.message||r.status); });
+      showToast('✅ '+name+' berhasil dihapus.','ok');
+      allMedia = allMedia.filter(function(f){ return f.name!==name; });
+      renderGallery(allMedia);
+    })
+    .catch(function(err){
+      showToast('❌ Gagal hapus: '+err.message,'er');
+    });
+  };
+
+  /* Copy URL */
+  window.copyMediaUrl = function(url){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        showToast('✅ URL berhasil di-copy!','ok');
+      }).catch(function(){ fallbackCopy(url); });
+    } else { fallbackCopy(url); }
+  };
+
+  function fallbackCopy(url){
+    var inp = document.createElement('input');
+    inp.value = url; inp.style.position='fixed'; inp.style.opacity='0';
+    document.body.appendChild(inp); inp.select();
+    document.execCommand('copy'); document.body.removeChild(inp);
+    showToast('✅ URL berhasil di-copy!','ok');
+  }
+
+  /* Search */
+  window.filterMedia = function(q){
+    var term = q.toLowerCase();
+    var filtered = allMedia.filter(function(f){ return f.name.toLowerCase().indexOf(term)>-1; });
+    renderGallery(filtered);
+  };
+
+  /* Toast */
+  function showToast(msg, type){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast on'+(type?' '+type:'');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ t.className='toast'; }, 4000);
+  }
+
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+})();
+</script>
+</body>
+</html>
