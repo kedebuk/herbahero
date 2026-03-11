@@ -1,10 +1,13 @@
 /**
- * index.js — Herbahero Cloudflare Worker
- * Central router: LP pages, admin SPA, CRUD API
+ * Herbahero Cloudflare Worker
+ * - LP routing by slug and custom domain mapping
+ * - Admin API (Bearer auth)
+ * - KV + R2 storage
  */
 
 import { generateLPShell } from './lp-shell.js';
 
+const ROOT_DOMAIN = 'herbahero.my.id';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
@@ -19,146 +22,215 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
+    const host = url.hostname.toLowerCase();
 
-    // API routes
+    // 1) API routes
     if (path.startsWith('/api/')) {
       return handleAPI(request, env, url);
     }
 
-    // Admin SPA
-    if (path === '/' || path === '/admin' || path.startsWith('/admin/')) {
+    // 2) Admin SPA routes
+    if (path === '/admin' || path.startsWith('/admin/')) {
       return serveAdmin(env);
     }
 
-    // LP route: /:slug
+    // 3) Custom domain routing: domain:{host} -> slug
+    if (host !== ROOT_DOMAIN && !host.endsWith('.workers.dev')) {
+      const mappedSlug = await env.KV.get(`domain:${host}`);
+      if (mappedSlug) {
+        return handleLP(mappedSlug, env);
+      }
+    }
+
+    // 4) Root domain: / serves admin, /:slug serves LP
+    if (path === '/') {
+      return serveAdmin(env);
+    }
+
     const slugMatch = path.match(/^\/([a-z0-9-]+)\/?$/i);
     if (slugMatch) {
-      return handleLP(slugMatch[1], env);
+      return handleLP(slugMatch[1].toLowerCase(), env);
     }
 
     return json({ error: 'Not Found' }, 404);
-  }
+  },
 };
 
-// ─── LP Handler ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// LP Handler
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function handleLP(slug, env) {
   const cfg = await env.KV.get(`lp:${slug}:cfg`, 'json');
-  if (!cfg) {
+  if (!cfg || cfg.status === 'archived') {
     return new Response('<h1>LP not found</h1>', {
       status: 404,
-      headers: { 'Content-Type': 'text/html' }
+      headers: { 'Content-Type': 'text/html;charset=utf-8' },
     });
   }
-  const global = await env.KV.get('config:global', 'json') || {};
-  const html = generateLPShell(cfg, global);
+
+  const globalCfg = (await env.KV.get('config:global', 'json')) || {};
+  const html = generateLPShell(cfg, globalCfg);
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html;charset=utf-8' }
+    headers: {
+      'Content-Type': 'text/html;charset=utf-8',
+      'Cache-Control': 'public, max-age=60',
+    },
   });
 }
 
-// ─── Admin SPA ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin SPA
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function serveAdmin(env) {
-  // Try to load admin HTML from KV (so it can be updated without redeploying)
   const adminHtml = await env.KV.get('static:admin.html');
   if (adminHtml) {
     return new Response(adminHtml, {
-      headers: { 'Content-Type': 'text/html;charset=utf-8' }
+      headers: { 'Content-Type': 'text/html;charset=utf-8' },
     });
   }
-  // Fallback stub
+
   return new Response(`<!DOCTYPE html><html><head><title>Herbahero Admin</title></head>
-<body><p>Admin UI not loaded. Upload admin HTML via: <code>wrangler kv:key put "static:admin.html" --path admin/index.html</code></p></body></html>`, {
-    headers: { 'Content-Type': 'text/html;charset=utf-8' }
+<body style="font-family:sans-serif;padding:24px">
+  <h2>Herbahero Admin belum di-upload</h2>
+  <p>Upload dengan command berikut:</p>
+  <pre>wrangler kv key put --binding HERBAHERO "static:admin.html" --path ./admin/index.html</pre>
+</body></html>`, {
+    headers: { 'Content-Type': 'text/html;charset=utf-8' },
   });
 }
 
-// ─── API Handler ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// API
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function handleAPI(request, env, url) {
   const path = url.pathname;
+  const method = request.method;
 
-  // Auth check (skip shipping proxy — it's called by LP page)
+  // Public endpoints (LP-side)
   const isShipping = path.startsWith('/api/shipping/');
+
+  // Auth for admin endpoints
   if (!isShipping) {
-    const global = await env.KV.get('config:global', 'json') || {};
-    const token = global.adminToken || env.ADMIN_TOKEN || '';
-    const auth = request.headers.get('Authorization') || '';
-    if (token && auth !== `Bearer ${token}`) {
-      return json({ error: 'Unauthorized' }, 401);
-    }
+    const authOk = await isAuthorized(request, env);
+    if (!authOk) return json({ error: 'Unauthorized' }, 401);
+  }
+
+  // GET /api/health
+  if (path === '/api/health' && method === 'GET') {
+    return json({ ok: true, now: new Date().toISOString() });
   }
 
   // GET /api/slugs
-  if (path === '/api/slugs' && request.method === 'GET') {
-    const index = await env.KV.get('slugs:index', 'json') || [];
-    return json({ ok: true, data: index });
+  if (path === '/api/slugs' && method === 'GET') {
+    const index = ((await env.KV.get('slugs:index', 'json')) || []).filter(Boolean);
+    return json({ ok: true, data: index.sort() });
   }
 
   // POST /api/slugs
-  if (path === '/api/slugs' && request.method === 'POST') {
-    const body = await request.json();
-    if (!body.slug || !body.productName) {
-      return json({ error: 'slug and productName required' }, 400);
+  if (path === '/api/slugs' && method === 'POST') {
+    const body = await safeJson(request);
+    if (!body) return json({ error: 'Invalid JSON' }, 400);
+
+    const slug = normalizeSlug(body.slug);
+    if (!slug) return json({ error: 'Invalid slug' }, 400);
+    if (!body.productName || String(body.productName).trim().length < 2) {
+      return json({ error: 'productName required' }, 400);
     }
-    const slug = body.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+    const existing = await env.KV.get(`lp:${slug}:cfg`, 'json');
+    if (existing) return json({ error: 'Slug already exists' }, 409);
+
     const now = new Date().toISOString();
     const cfg = {
       slug,
-      productName: body.productName,
-      status: body.status || 'active',
-      jpgUrl: body.jpgUrl || '',
-      customDomain: body.customDomain || '',
-      packages: body.packages || [],
+      productName: String(body.productName).trim(),
+      status: body.status === 'draft' ? 'draft' : 'active',
+      jpgUrl: sanitizeString(body.jpgUrl),
+      customDomain: sanitizeDomain(body.customDomain) || '',
+      packages: Array.isArray(body.packages) ? body.packages : [],
       payment: body.payment || { method: 'cod' },
-      gasWebhookUrl: body.gasWebhookUrl || '',
-      waNumber: body.waNumber || '',
+      gasWebhookUrl: sanitizeString(body.gasWebhookUrl),
+      waNumber: sanitizeString(body.waNumber),
       analytics: body.analytics || {},
       warehouseOrigin: body.warehouseOrigin || null,
       createdAt: now,
       updatedAt: now,
     };
+
     await env.KV.put(`lp:${slug}:cfg`, JSON.stringify(cfg));
-    const index = await env.KV.get('slugs:index', 'json') || [];
-    if (!index.includes(slug)) { index.push(slug); await env.KV.put('slugs:index', JSON.stringify(index)); }
+
+    const index = ((await env.KV.get('slugs:index', 'json')) || []).filter(Boolean);
+    if (!index.includes(slug)) {
+      index.push(slug);
+      await env.KV.put('slugs:index', JSON.stringify(index));
+    }
+
     return json({ ok: true, slug }, 201);
   }
 
   // GET /api/slugs/:slug
   const slugGet = path.match(/^\/api\/slugs\/([a-z0-9-]+)$/i);
-  if (slugGet && request.method === 'GET') {
-    const cfg = await env.KV.get(`lp:${slugGet[1]}:cfg`, 'json');
+  if (slugGet && method === 'GET') {
+    const slug = slugGet[1].toLowerCase();
+    const cfg = await env.KV.get(`lp:${slug}:cfg`, 'json');
     if (!cfg) return json({ error: 'Not found' }, 404);
     return json({ ok: true, data: cfg });
   }
 
   // PUT /api/slugs/:slug
   const slugPut = path.match(/^\/api\/slugs\/([a-z0-9-]+)$/i);
-  if (slugPut && request.method === 'PUT') {
-    const slug = slugPut[1];
+  if (slugPut && method === 'PUT') {
+    const slug = slugPut[1].toLowerCase();
     const existing = await env.KV.get(`lp:${slug}:cfg`, 'json');
     if (!existing) return json({ error: 'Not found' }, 404);
-    const body = await request.json();
-    const updated = { ...existing, ...body, slug, updatedAt: new Date().toISOString() };
+
+    const body = await safeJson(request);
+    if (!body) return json({ error: 'Invalid JSON' }, 400);
+
+    const updated = {
+      ...existing,
+      ...body,
+      slug,
+      customDomain: sanitizeDomain(body.customDomain ?? existing.customDomain) || '',
+      updatedAt: new Date().toISOString(),
+    };
+
     await env.KV.put(`lp:${slug}:cfg`, JSON.stringify(updated));
     return json({ ok: true, data: updated });
   }
 
   // DELETE /api/slugs/:slug
   const slugDel = path.match(/^\/api\/slugs\/([a-z0-9-]+)$/i);
-  if (slugDel && request.method === 'DELETE') {
-    const slug = slugDel[1];
+  if (slugDel && method === 'DELETE') {
+    const slug = slugDel[1].toLowerCase();
+
+    const cfg = await env.KV.get(`lp:${slug}:cfg`, 'json');
+    if (cfg?.customDomain) {
+      await env.KV.delete(`domain:${cfg.customDomain.toLowerCase()}`);
+    }
+
     await env.KV.delete(`lp:${slug}:cfg`);
-    const index = (await env.KV.get('slugs:index', 'json') || []).filter(s => s !== slug);
+
+    const index = ((await env.KV.get('slugs:index', 'json')) || []).filter((s) => s !== slug);
     await env.KV.put('slugs:index', JSON.stringify(index));
+
+    // Best effort: delete media variants
+    await Promise.allSettled([
+      env.MEDIA.delete(`lp/${slug}.jpg`),
+      env.MEDIA.delete(`lp/${slug}.png`),
+      env.MEDIA.delete(`lp/${slug}.webp`),
+    ]);
+
     return json({ ok: true });
   }
 
   // POST /api/slugs/:slug/upload
   const uploadMatch = path.match(/^\/api\/slugs\/([a-z0-9-]+)\/upload$/i);
-  if (uploadMatch && request.method === 'POST') {
-    const slug = uploadMatch[1];
+  if (uploadMatch && method === 'POST') {
+    const slug = uploadMatch[1].toLowerCase();
     const cfg = await env.KV.get(`lp:${slug}:cfg`, 'json');
     if (!cfg) return json({ error: 'Slug not found' }, 404);
 
@@ -169,12 +241,18 @@ async function handleAPI(request, env, url) {
     const contentType = file.type || 'image/jpeg';
     if (!contentType.startsWith('image/')) return json({ error: 'Only images allowed' }, 400);
 
-    const ext = contentType === 'image/png' ? 'png' : 'jpg';
+    const bytes = file.size || 0;
+    if (bytes > 6 * 1024 * 1024) {
+      return json({ error: 'File too large (max 6MB)' }, 413);
+    }
+
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
     const key = `lp/${slug}.${ext}`;
     await env.MEDIA.put(key, file.stream(), { httpMetadata: { contentType } });
 
-    const mediaBase = env.MEDIA_BASE_URL || 'https://media.herbahero.my.id';
+    const mediaBase = (env.MEDIA_BASE_URL || `https://${ROOT_DOMAIN}`).replace(/\/$/, '');
     const jpgUrl = `${mediaBase}/${key}`;
+
     cfg.jpgUrl = jpgUrl;
     cfg.updatedAt = new Date().toISOString();
     await env.KV.put(`lp:${slug}:cfg`, JSON.stringify(cfg));
@@ -183,91 +261,131 @@ async function handleAPI(request, env, url) {
   }
 
   // GET /api/global
-  if (path === '/api/global' && request.method === 'GET') {
-    const global = await env.KV.get('config:global', 'json') || {};
-    const safe = { ...global };
-    delete safe.adminToken; // never expose token
+  if (path === '/api/global' && method === 'GET') {
+    const globalCfg = (await env.KV.get('config:global', 'json')) || {};
+    const safe = stripSecrets(globalCfg);
     return json({ ok: true, data: safe });
   }
 
   // PUT /api/global
-  if (path === '/api/global' && request.method === 'PUT') {
-    const existing = await env.KV.get('config:global', 'json') || {};
-    const body = await request.json();
-    const updated = { ...existing, ...body };
+  if (path === '/api/global' && method === 'PUT') {
+    const existing = (await env.KV.get('config:global', 'json')) || {};
+    const body = await safeJson(request);
+    if (!body) return json({ error: 'Invalid JSON' }, 400);
+
+    // Never allow token overwrite from API body
+    const updated = {
+      ...existing,
+      ...body,
+      adminToken: existing.adminToken || null,
+    };
+
     await env.KV.put('config:global', JSON.stringify(updated));
-    const safe = { ...updated };
-    delete safe.adminToken;
-    return json({ ok: true, data: safe });
+    return json({ ok: true, data: stripSecrets(updated) });
   }
 
   // GET /api/domains
-  if (path === '/api/domains' && request.method === 'GET') {
+  if (path === '/api/domains' && method === 'GET') {
     const list = await env.KV.list({ prefix: 'domain:' });
-    const domains = await Promise.all(
-      list.keys.map(async k => ({
+    const data = await Promise.all(
+      list.keys.map(async (k) => ({
         domain: k.name.replace('domain:', ''),
         slug: await env.KV.get(k.name),
-      }))
+      })),
     );
-    return json({ ok: true, data: domains });
+    return json({ ok: true, data });
   }
 
   // POST /api/domains
-  if (path === '/api/domains' && request.method === 'POST') {
-    const body = await request.json();
-    if (!body.domain || !body.slug) return json({ error: 'domain and slug required' }, 400);
-    await env.KV.put(`domain:${body.domain}`, body.slug);
+  if (path === '/api/domains' && method === 'POST') {
+    const body = await safeJson(request);
+    if (!body) return json({ error: 'Invalid JSON' }, 400);
+
+    const domain = sanitizeDomain(body.domain);
+    const slug = normalizeSlug(body.slug);
+    if (!domain || !slug) return json({ error: 'domain and slug required' }, 400);
+
+    const slugCfg = await env.KV.get(`lp:${slug}:cfg`, 'json');
+    if (!slugCfg) return json({ error: 'Slug not found' }, 404);
+
+    await env.KV.put(`domain:${domain}`, slug);
+
+    slugCfg.customDomain = domain;
+    slugCfg.updatedAt = new Date().toISOString();
+    await env.KV.put(`lp:${slug}:cfg`, JSON.stringify(slugCfg));
+
     return json({
       ok: true,
-      instructions: `Set CNAME: ${body.domain} → herbahero.my.id at your DNS provider.`
+      instructions: `Set CNAME: ${domain} → ${ROOT_DOMAIN}`,
     });
   }
 
   // DELETE /api/domains/:domain
-  const domainDel = path.match(/^\/api\/domains\/(.+)$/);
-  if (domainDel && request.method === 'DELETE') {
-    await env.KV.delete(`domain:${domainDel[1]}`);
+  const domainDel = path.match(/^\/api\/domains\/(.+)$/i);
+  if (domainDel && method === 'DELETE') {
+    const domain = sanitizeDomain(domainDel[1]);
+    if (!domain) return json({ error: 'Invalid domain' }, 400);
+
+    const mappedSlug = await env.KV.get(`domain:${domain}`);
+    if (mappedSlug) {
+      const slugCfg = await env.KV.get(`lp:${mappedSlug}:cfg`, 'json');
+      if (slugCfg) {
+        slugCfg.customDomain = '';
+        slugCfg.updatedAt = new Date().toISOString();
+        await env.KV.put(`lp:${mappedSlug}:cfg`, JSON.stringify(slugCfg));
+      }
+    }
+
+    await env.KV.delete(`domain:${domain}`);
     return json({ ok: true });
   }
 
   // GET /api/shipping/search?search=...
-  // Uses API Lincah (courier aggregator). Env: LINCAH_API_KEY, LINCAH_API_URL
-  if (path === '/api/shipping/search' && request.method === 'GET') {
-    const q = url.searchParams.get('search') || '';
+  if (path === '/api/shipping/search' && method === 'GET') {
+    const q = (url.searchParams.get('search') || '').trim();
     if (q.length < 2) return json({ data: [] });
-    const global = await env.KV.get('config:global', 'json') || {};
-    const apiKey = global.lincahApiKey || env.LINCAH_API_KEY || '';
-    const apiUrl = global.lincahApiUrl || env.LINCAH_API_URL || '';
-    if (!apiKey || !apiUrl) return json({ data: [] }); // not configured yet
+
+    const globalCfg = (await env.KV.get('config:global', 'json')) || {};
+    const apiKey = globalCfg.lincahApiKey || env.LINCAH_API_KEY || '';
+    const apiUrl = normalizeApiUrl(globalCfg.lincahApiUrl || env.LINCAH_API_URL || '');
+
+    if (!apiKey || !apiUrl) return json({ data: [] });
+
     try {
-      const r = await fetch(
-        `${apiUrl}/destination?search=${encodeURIComponent(q)}`,
-        { headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' } }
-      );
+      const r = await fetch(`${apiUrl}/destination?search=${encodeURIComponent(q)}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: 'application/json',
+        },
+      });
+
       if (!r.ok) return json({ data: [] });
-      return r; // proxy response as-is
+      return passThroughJson(r);
     } catch {
       return json({ data: [] });
     }
   }
 
   // POST /api/shipping/cost
-  // Uses API Lincah. Falls back silently so LP uses static rates.
-  if (path === '/api/shipping/cost' && request.method === 'POST') {
-    const body = await request.json();
-    const global = await env.KV.get('config:global', 'json') || {};
-    const apiKey = global.lincahApiKey || env.LINCAH_API_KEY || '';
-    const apiUrl = global.lincahApiUrl || env.LINCAH_API_URL || '';
+  if (path === '/api/shipping/cost' && method === 'POST') {
+    const body = await safeJson(request);
+    if (!body) return json({ data: [] });
+
+    const globalCfg = (await env.KV.get('config:global', 'json')) || {};
+    const apiKey = globalCfg.lincahApiKey || env.LINCAH_API_KEY || '';
+    const apiUrl = normalizeApiUrl(globalCfg.lincahApiUrl || env.LINCAH_API_URL || '');
+
     if (!apiKey || !apiUrl) return json({ data: [] });
-    const origin = body.origin || global.warehouseOrigin?.cityId || '';
+
+    const origin = body.origin || globalCfg?.warehouseOrigin?.cityId || '';
+
     try {
       const r = await fetch(`${apiUrl}/cost`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           origin,
@@ -275,8 +393,9 @@ async function handleAPI(request, env, url) {
           weight: body.weight || 1000,
         }),
       });
+
       if (!r.ok) return json({ data: [] });
-      return r;
+      return passThroughJson(r);
     } catch {
       return json({ data: [] });
     }
@@ -285,11 +404,106 @@ async function handleAPI(request, env, url) {
   return json({ error: 'Not Found' }, 404);
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function isAuthorized(request, env) {
+  const fromEnv = (env.ADMIN_TOKEN || '').trim();
+  const globalCfg = (await env.KV.get('config:global', 'json')) || {};
+  const fromKV = (globalCfg.adminToken || '').trim();
+  const token = fromEnv || fromKV;
+
+  if (!token) return false;
+
+  const auth = request.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) return false;
+
+  const incoming = auth.slice(7).trim();
+  return safeEqual(incoming, token);
+}
+
+function stripSecrets(globalCfg) {
+  const safe = { ...globalCfg };
+  delete safe.adminToken;
+  delete safe.lincahApiKey;
+  delete safe.analytics?.capiToken;
+  return safe;
+}
+
+function normalizeSlug(input) {
+  if (!input) return '';
+  const slug = String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (!slug || slug.length < 2 || slug.length > 64) return '';
+  return slug;
+}
+
+function sanitizeDomain(input) {
+  if (!input) return '';
+  const domain = String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+
+  if (!/^[a-z0-9.-]+$/.test(domain)) return '';
+  if (!domain.includes('.') || domain.length > 253) return '';
+  return domain;
+}
+
+function sanitizeString(input) {
+  if (input == null) return '';
+  return String(input).trim();
+}
+
+function normalizeApiUrl(input) {
+  const url = String(input || '').trim().replace(/\/$/, '');
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) return '';
+  return url;
+}
+
+async function safeJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return out === 0;
+}
+
+async function passThroughJson(response) {
+  const text = await response.text();
+  return new Response(text, {
+    status: response.status,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': response.headers.get('Content-Type') || 'application/json',
+    },
+  });
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json',
+    },
   });
 }
