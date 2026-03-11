@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Template Library — Herbahero</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.topbar h1{font-size:1.05rem;font-weight:700;white-space:nowrap}
+.back-link{color:#6b7280;text-decoration:none;font-size:.85rem;white-space:nowrap}
+.back-link:hover{color:#111}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn-icon{padding:7px 10px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;font-size:.85rem;cursor:pointer}
+.btn-icon:hover{background:#e5e7eb;color:#374151}
+.container{max-width:900px;margin:24px auto;padding:0 16px}
+.page-desc{text-align:center;color:#6b7280;font-size:.9rem;margin-bottom:24px}
+
+.tpl-grid{display:grid;gap:20px;grid-template-columns:1fr 1fr}
+@media(max-width:640px){.tpl-grid{grid-template-columns:1fr}}
+
+.tpl-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;transition:box-shadow .2s,transform .15s}
+.tpl-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1);transform:translateY(-2px)}
+.tpl-header{padding:20px 20px 14px;color:#fff;position:relative}
+.tpl-header h3{font-size:1.15rem;font-weight:700;margin-bottom:4px}
+.tpl-header .tpl-desc{font-size:.85rem;opacity:.85}
+.tpl-body{padding:16px 20px}
+.tpl-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tpl-tag{display:inline-block;padding:3px 10px;background:#f3f4f6;border-radius:999px;font-size:.75rem;color:#6b7280;font-weight:600}
+.tpl-price{font-size:1.3rem;font-weight:800;color:#1f2937;margin-bottom:14px}
+.tpl-opts{font-size:.82rem;color:#6b7280;margin-bottom:14px;line-height:1.6}
+.tpl-opts strong{color:#374151}
+.btn-use{display:block;width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;text-align:center;text-decoration:none}
+.btn-use:hover{background:#1d4ed8;text-decoration:none}
+
+.tpl-card.custom{border-style:dashed;border-width:2px}
+.tpl-card.custom .tpl-body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.tpl-card.custom .plus-icon{font-size:3rem;color:#d1d5db;margin-bottom:12px}
+.tpl-card.custom h3{font-size:1rem;color:#6b7280;margin-bottom:6px}
+.tpl-card.custom p{font-size:.85rem;color:#9ca3af;margin-bottom:16px}
+.btn-custom{padding:10px 24px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-custom:hover{background:#e5e7eb;text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="../" class="back-link">&larr; Hub</a>
+    <h1>📐 Template Library</h1>
+  </div>
+  <div class="topbar-right">
+    <a href="/builder/" class="btn-icon">🛠️ Builder</a>
+    <a href="/admin/settings.html" class="btn-icon" title="Settings">⚙️</a>
+  </div>
+</div>
+
+<div class="container">
+  <p class="page-desc">Pilih template siap pakai, lalu customize di Builder. Hemat waktu setup!</p>
+
+  <div class="tpl-grid" id="tplGrid"></div>
+</div>
+
+<script>
+(function(){
+  var templates = [
+    {
+      id: 'herbal',
+      name: 'Produk Herbal / Kesehatan',
+      desc: 'Template untuk produk herbal, suplemen, dan kesehatan. Termasuk tabel ongkir lengkap.',
+      color: '#16a34a',
+      data: {
+        productName: 'Produk Herbal',
+        price: 150000,
+        options: ['1 Box \u2014 Rp 150.000', '2 Box \u2014 Rp 270.000 (Hemat!)', '3 Box \u2014 Rp 380.000 (Best Value!)'],
+        rates: [
+          {wilayah:'Jawa',ongkir:15000,estimasi:'2-3 hari'},
+          {wilayah:'Sumatera',ongkir:25000,estimasi:'3-4 hari'},
+          {wilayah:'Kalimantan',ongkir:35000,estimasi:'4-5 hari'},
+          {wilayah:'Sulawesi/NTT/NTB',ongkir:40000,estimasi:'5-7 hari'}
+        ],
+        color: '#16a34a',
+        submitBtn: 'Pesan Sekarang \u2014 COD Tersedia! \ud83c\udf3f',
+        payMethods: ['COD (Bayar di Tempat)', 'Transfer BCA', 'Transfer Mandiri'],
+        fields: {alamat:true,kecamatan:true,kota:true,provinsi:false,catatan:true},
+        webhook: '',
+        waNumber: ''
+      }
+    },
+    {
+      id: 'frozen',
+      name: 'Frozen Food / Makanan',
+      desc: 'Template untuk makanan beku, snack, dan produk FMCG. Ongkir per zona pengiriman.',
+      color: '#2563eb',
+      data: {
+        productName: 'Frozen Food',
+        price: 85000,
+        options: ['1 Pack \u2014 Rp 85.000', '2 Pack \u2014 Rp 155.000', '5 Pack \u2014 Rp 350.000 (Hemat!)'],
+        rates: [
+          {wilayah:'Jabodetabek',ongkir:15000,estimasi:'Same day/Next day'},
+          {wilayah:'Jawa (luar Jabodetabek)',ongkir:25000,estimasi:'1-2 hari'},
+          {wilayah:'Luar Jawa',ongkir:45000,estimasi:'3-5 hari'}
+        ],
+        color: '#2563eb',
+        submitBtn: 'Pesan Sekarang \ud83c\udf71',
+        payMethods: ['Transfer BCA','Transfer Mandiri','QRIS','COD (Bayar di Tempat)'],
+        fields: {alamat:true,kecamatan:true,kota:true,provinsi:false,catatan:true},
+        webhook: '',
+        waNumber: ''
+      }
+    },
+    {
+      id: 'fashion',
+      name: 'Fashion / Pakaian',
+      desc: 'Template untuk fashion, pakaian, dan aksesoris. Pilihan size sebagai opsi produk.',
+      color: '#7c3aed',
+      data: {
+        productName: 'Fashion Item',
+        price: 120000,
+        options: ['Size S \u2014 Rp 120.000','Size M \u2014 Rp 120.000','Size L \u2014 Rp 120.000','Size XL \u2014 Rp 130.000','Size XXL \u2014 Rp 140.000'],
+        rates: [
+          {wilayah:'Jawa',ongkir:10000,estimasi:'2-3 hari'},
+          {wilayah:'Sumatera',ongkir:20000,estimasi:'3-4 hari'},
+          {wilayah:'Kalimantan/Sulawesi',ongkir:30000,estimasi:'4-5 hari'},
+          {wilayah:'Papua/Maluku',ongkir:45000,estimasi:'6-9 hari'}
+        ],
+        color: '#7c3aed',
+        submitBtn: 'Beli Sekarang \ud83d\udc57',
+        payMethods: ['Transfer BCA','Transfer Mandiri','Transfer BNI','QRIS'],
+        fields: {alamat:true,kecamatan:true,kota:true,provinsi:false,catatan:true},
+        webhook: '',
+        waNumber: ''
+      }
+    },
+    {
+      id: 'jasa',
+      name: 'Jasa / Service',
+      desc: 'Template untuk jasa dan layanan. Tanpa ongkir, fokus pada paket harga.',
+      color: '#0891b2',
+      data: {
+        productName: 'Paket Jasa',
+        price: 250000,
+        options: ['Paket Basic \u2014 Rp 250.000','Paket Standard \u2014 Rp 450.000','Paket Premium \u2014 Rp 750.000'],
+        rates: [],
+        color: '#0891b2',
+        submitBtn: 'Daftar Sekarang \ud83d\ude80',
+        payMethods: ['Transfer BCA','Transfer Mandiri','Transfer BNI','QRIS'],
+        fields: {alamat:false,kecamatan:false,kota:false,provinsi:false,catatan:true},
+        webhook: '',
+        waNumber: ''
+      }
+    }
+  ];
+
+  var grid = document.getElementById('tplGrid');
+  var html = '';
+
+  templates.forEach(function(tpl){
+    var optCount = tpl.data.options.length;
+    var rateCount = tpl.data.rates.length;
+    html += '<div class="tpl-card">'
+      +'<div class="tpl-header" style="background:'+tpl.color+'">'
+      +'<h3>'+esc(tpl.name)+'</h3>'
+      +'<div class="tpl-desc">'+esc(tpl.desc)+'</div>'
+      +'</div>'
+      +'<div class="tpl-body">'
+      +'<div class="tpl-price">Rp '+tpl.data.price.toLocaleString('id-ID')+'</div>'
+      +'<div class="tpl-meta">'
+      +'<span class="tpl-tag">'+optCount+' opsi produk</span>'
+      +(rateCount?'<span class="tpl-tag">'+rateCount+' zona ongkir</span>':'<span class="tpl-tag">Tanpa ongkir</span>')
+      +'<span class="tpl-tag">'+tpl.data.payMethods.length+' metode bayar</span>'
+      +'</div>'
+      +'<div class="tpl-opts">'
+      +'<strong>Opsi:</strong> '+tpl.data.options.slice(0,2).map(esc).join(', ')+(optCount>2?' ...':'')
+      +'</div>'
+      +'<button class="btn-use" onclick="useTemplate(\''+tpl.id+'\')" style="background:'+tpl.color+'">Gunakan Template \u2192</button>'
+      +'</div></div>';
+  });
+
+  // Custom template slot
+  html += '<div class="tpl-card custom">'
+    +'<div class="tpl-body">'
+    +'<div class="plus-icon">+</div>'
+    +'<h3>Custom Template</h3>'
+    +'<p>Mulai dari nol dengan Builder kosong.</p>'
+    +'<a href="/builder/" class="btn-custom">Buka Builder \u2192</a>'
+    +'</div></div>';
+
+  grid.innerHTML = html;
+
+  window.useTemplate = function(id){
+    var tpl = null;
+    for(var i=0;i<templates.length;i++){
+      if(templates[i].id===id){ tpl=templates[i]; break; }
+    }
+    if(!tpl) return;
+    localStorage.setItem('template_load', JSON.stringify(tpl.data));
+    window.location.href = '/builder/';
+  };
+
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script>
+</body>
+</html>
