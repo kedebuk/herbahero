@@ -33,19 +33,22 @@ Platform ini bekerja seperti ini:
 [Customer visit: herbahero.my.id/angetpol atau angetpol.com]
   Halaman tampil: JPG sebagai background/hero image
   Form order floating/overlay di bawah atau samping JPG
-  Customer isi:
-    - Nama lengkap
-    - Nomor HP
-    - Alamat lengkap
-    - Kecamatan/kota tujuan
-    - Pilih paket produk
-  Sistem kalkulasi ongkir otomatis (RajaOngkir Komerce API)
-  Customer konfirmasi → submit order
+  Customer isi form (4 fields):
+    - Nama
+    - HP
+    - Alamat
+    - Kecamatan (search dropdown)
+  Pilih paket produk
+  Sistem auto-kalkulasi ongkir (RajaOngkir Komerce API)
+  Customer pilih kurir → lihat total
+  Submit order
        ↓
 [GAS / Backend]
   Order masuk ke Google Sheets
   FB Pixel + CAPI event fired (Purchase/Lead)
-  [TBD] Payment: gateway atau instruksi manual transfer
+  Tampilkan instruksi payment:
+    - Bank Transfer → nama bank, nomor rekening, nominal
+    - COD → konfirmasi pesanan, kurir datang bayar di tempat
 ```
 
 ---
@@ -101,7 +104,7 @@ Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
     { "label": "3 Botol HEMAT", "qty": 3, "price": 220000 }
   ],
   "payment": {
-    "method": "manual",
+    "method": "bank_transfer",
     "bankName": "BCA",
     "accountNumber": "1234567890",
     "accountName": "PT Herbahero"
@@ -120,8 +123,9 @@ Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
 ```
 
 > **Field notes:**
+> - `payment.method` — `"bank_transfer"` atau `"cod"`. COD tidak butuh detail rekening.
 > - `analytics.fbPixelId` — opsional. Kalau null/kosong → pakai global default pixel.
-> - `warehouseOrigin` — opsional. Kalau null → pakai gudang global. Set jika slug ini punya gudang asal berbeda (misal: supplier di Surabaya, bukan Jakarta).
+> - `warehouseOrigin` — opsional. Kalau null → pakai gudang global. Set jika slug ini punya gudang asal berbeda.
 
 > **Pixel inheritance rule:** `fbPixelId` dan `capiToken` di per-slug config bersifat **opsional**.
 > Worker resolve pixel dengan urutan: `slug.fbPixelId` → `global.fbPixelId`.
@@ -215,20 +219,21 @@ Total = harga produk + ongkir
 > Perlu konfirmasi dari Roni apakah sudah aktif di dashboard RajaOngkir Komerce.
 > Jika belum aktif, fallback ke static rates dulu.
 
-### 5. Form Fields (TBD — menunggu konfirmasi Roni)
+### 5. Form Fields ✅ (Confirmed by Roni)
 
-Kandidat fields:
-- [ ] Nama lengkap *
-- [ ] Nomor HP/WA *
-- [ ] Alamat lengkap *
-- [ ] Kecamatan/kota tujuan * (dengan search dropdown → RajaOngkir)
-- [ ] Provinsi (auto-fill dari pilih kecamatan)
-- [ ] Kode pos (auto-fill)
-- [ ] Pilihan paket *
-- [ ] Pilihan kurir * (setelah ongkir dihitung)
-- [ ] Catatan (opsional)
+4 fields customer — simpel:
+1. **Nama** (text)
+2. **HP** (tel)
+3. **Alamat** (textarea)
+4. **Kecamatan** (search dropdown → RajaOngkir autocomplete)
 
-*= wajib
+Setelah kecamatan dipilih:
+- Sistem auto-kalkulasi ongkir (RajaOngkir Komerce: origin gudang → dest kecamatan)
+- Tampilkan pilihan kurir + harga
+- Customer pilih kurir → total = harga produk + ongkir
+- Submit → order masuk GAS
+
+Plus di form: **pilih paket** (dari `packages` config slug).
 
 ### 6. Admin Dashboard — Simplified
 
@@ -317,16 +322,16 @@ Customer isi form → kalkulasi ongkir → submit
 
 **Sudah terjawab ✅**
 - LP format: JPG upload (bukan HTML builder) ✅
-- Form fields: nama, HP, alamat, kecamatan, kota ✅
+- Form fields: nama, HP, alamat, kecamatan (4 fields) ✅
 - Analytics: global GAS backend, per-LP override pixel ✅
+- Payment: manual only — bank transfer atau COD per slug ✅
+- Ongkir: RajaOngkir Komerce API, key `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` ✅
 
 **Masih pending ⏳**
 
 1. **Cloudflare zone** — herbahero.my.id sudah masuk zone CF dengan Worker plan? Ini blocker untuk deploy.
 
-2. **Payment method** — gateway otomatis (Midtrans/Xendit) atau manual transfer (instruksi rekening)? Pengaruh ke flow setelah submit form.
-
-3. **JPG Storage** — Cloudflare R2 atau cukup simpan URL eksternal (misal upload ke Imgur/CDN sendiri, platform tinggal simpan URL-nya)?
+2. **JPG Storage** — Cloudflare R2 atau cukup simpan URL eksternal (upload ke CDN sendiri, platform simpan URL-nya)?
 
 ---
 
@@ -338,6 +343,7 @@ Customer isi form → kalkulasi ongkir → submit
 | 2026-03-11 | v1.1 | Visual builder confirmed (Opsi A) — *dibatalkan di v2* |
 | 2026-03-11 | v2 | **MAJOR REVISION** — JPG upload + overlay form, tidak ada HTML builder |
 | 2026-03-11 | v2.1 | Per-slug warehouse override, bersihkan sisa v1, analytics schema dirapikan |
+| 2026-03-11 | v2.2 | Payment confirmed (manual: bank transfer/COD), form fields confirmed (4 fields) |
 
 ---
 
