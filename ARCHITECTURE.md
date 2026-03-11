@@ -107,13 +107,21 @@ Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
     "accountName": "PT Herbahero"
   },
   "gasWebhookUrl": "https://script.google.com/...",
-  "fbPixelId": "123456789",
-  "capiToken": "...",
   "waNumber": "6281234567890",
+  "analytics": {
+    "fbPixelId": "123456789",
+    "capiToken": "EAAxxxxxxx",
+    "testEventCode": ""
+  },
+  "warehouseOrigin": null,
   "createdAt": "2026-03-11T00:00:00Z",
   "updatedAt": "2026-03-11T00:00:00Z"
 }
 ```
+
+> **Field notes:**
+> - `analytics.fbPixelId` — opsional. Kalau null/kosong → pakai global default pixel.
+> - `warehouseOrigin` — opsional. Kalau null → pakai gudang global. Set jika slug ini punya gudang asal berbeda (misal: supplier di Surabaya, bukan Jakarta).
 
 > **Pixel inheritance rule:** `fbPixelId` dan `capiToken` di per-slug config bersifat **opsional**.
 > Worker resolve pixel dengan urutan: `slug.fbPixelId` → `global.fbPixelId`.
@@ -307,15 +315,18 @@ Customer isi form → kalkulasi ongkir → submit
 
 ## Open Questions untuk Roni
 
+**Sudah terjawab ✅**
+- LP format: JPG upload (bukan HTML builder) ✅
+- Form fields: nama, HP, alamat, kecamatan, kota ✅
+- Analytics: global GAS backend, per-LP override pixel ✅
+
+**Masih pending ⏳**
+
 1. **Cloudflare zone** — herbahero.my.id sudah masuk zone CF dengan Worker plan? Ini blocker untuk deploy.
 
-2. **Payment method** — otomatis via gateway (Midtrans/Xendit/dll) atau manual (instruksi transfer ke rekening)? Kalau gateway, integrasi payment link perlu ditambah.
+2. **Payment method** — gateway otomatis (Midtrans/Xendit) atau manual transfer (instruksi rekening)? Pengaruh ke flow setelah submit form.
 
-3. **Form fields** — konfirmasi fields yang dibutuhkan (lihat kandidat di atas).
-
-4. **RajaOngkir key** — apakah `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` sudah aktif di dashboard komerce.id? Test sebelumnya 401.
-
-5. **GAS** — satu webhook URL global untuk semua LP, atau masing-masing LP bisa override?
+3. **JPG Storage** — Cloudflare R2 atau cukup simpan URL eksternal (misal upload ke Imgur/CDN sendiri, platform tinggal simpan URL-nya)?
 
 ---
 
@@ -324,8 +335,9 @@ Customer isi form → kalkulasi ongkir → submit
 | Tanggal | Versi | Perubahan |
 |---|---|---|
 | 2026-03-11 | v1 | Initial proposal (CF Worker + KV, visual builder) |
-| 2026-03-11 | v1.1 | Visual builder confirmed (Opsi A) |
+| 2026-03-11 | v1.1 | Visual builder confirmed (Opsi A) — *dibatalkan di v2* |
 | 2026-03-11 | v2 | **MAJOR REVISION** — JPG upload + overlay form, tidak ada HTML builder |
+| 2026-03-11 | v2.1 | Per-slug warehouse override, bersihkan sisa v1, analytics schema dirapikan |
 
 ---
 
