@@ -14,6 +14,7 @@ Platform terpusat (`herbahero.my.id`) yang:
 - Melayani banyak LP melalui slug unik
 - Support custom domain per slug
 - Satu admin dashboard untuk manage semua slug
+- **Visual builder** di dalam dashboard — user isi konten lewat form/editor, bukan upload HTML manual
 
 ---
 
@@ -108,14 +109,99 @@ if (slug && slug !== "admin") {
 Pages:
 - `/admin/` — Dashboard utama (stats, recent orders)
 - `/admin/slugs` — List & manage semua slug
-- `/admin/slugs/new` — Buat LP baru (builder)
-- `/admin/slugs/:slug/edit` — Edit LP
+- `/admin/slugs/new` — Buat LP baru via visual builder
+- `/admin/slugs/:slug/edit` — Edit LP via visual builder
 - `/admin/domains` — Custom domain management
 - `/admin/settings` — Global settings (CF token, GAS URL, FB Pixel, dll)
 - `/admin/analytics` — Analytics per slug
 - `/admin/media` — Media library
 
 Admin berkomunikasi langsung ke Cloudflare API untuk update KV.
+
+### 3a. Visual Builder — Detail (Opsi A, Confirmed)
+
+**Keputusan Roni:** Konten LP dibuat via **visual builder di dalam dashboard** — bukan upload HTML, bukan template-only.
+
+**Flow:**
+```
+Admin buka /admin/slugs/new
+       ↓
+Isi form builder:
+  - Produk (nama, foto, harga, benefit, dll)
+  - Desain (warna, font, layout)
+  - Pengiriman (shipping config, fallback rates)
+  - Meta Ads (FB Pixel ID, CAPI token, WA number)
+       ↓
+Builder generate HTML dari template engine
+       ↓
+Simpan ke KV:
+  lp:{slug}:cfg  ← config JSON (editable)
+  lp:{slug}:html ← rendered HTML (serve-ready)
+       ↓
+Slug langsung aktif, bisa diakses
+```
+
+**Storage Strategy — Dual Write:**
+- `lp:{slug}:cfg` — config JSON (source of truth, bisa di-edit ulang)
+- `lp:{slug}:html` — rendered HTML (dipakai saat serve, hasil kompilasi cfg)
+
+Saat edit LP: update cfg → re-render → overwrite html. Ini memastikan serve tetap cepat (tinggal ambil HTML, tidak perlu render di-edge tiap request).
+
+**Builder Sections (berdasarkan lp-template.html existing):**
+| Section | Fields |
+|---|---|
+| Identitas Produk | Nama produk, tagline, deskripsi, foto hero |
+| Benefit | List poin benefit (dinamis, bisa tambah/hapus) |
+| Testimoni | Nama, foto, teks (dinamis) |
+| Produk & Harga | Pilihan paket (1 pcs / 2 pcs / 3 pcs), harga, harga coret |
+| Pengiriman | Shipping mode (API / fallback static), GAS webhook URL |
+| Meta Ads | FB Pixel ID, CAPI token, Test Event Code, UTM default |
+| Kontak | Nomor WA, template pesan WA |
+| SEO | Meta title, meta description, OG image |
+| Custom Code | Optional: inject JS/CSS tambahan |
+
+**LP Config JSON Schema (Extended):**
+```json
+{
+  "slug": "angetpol",
+  "title": "Anget Pol — Jamu Herbal",
+  "status": "active",
+  "customDomain": "angetpol.com",
+  "template": "herbal",
+  "createdAt": "2026-03-11T00:00:00Z",
+  "updatedAt": "2026-03-11T00:00:00Z",
+  "content": {
+    "heroImage": "https://...",
+    "productName": "Anget Pol",
+    "tagline": "Jamu herbal untuk kesehatan",
+    "description": "...",
+    "benefits": ["Benefit 1", "Benefit 2"],
+    "testimonials": [
+      { "name": "Budi", "photo": "https://...", "text": "..." }
+    ],
+    "packages": [
+      { "qty": 1, "price": 85000, "strikePrice": 120000, "label": "1 Botol" },
+      { "qty": 3, "price": 220000, "strikePrice": 360000, "label": "3 Botol HEMAT" }
+    ]
+  },
+  "meta": {
+    "fbPixelId": "123456789",
+    "capiToken": "...",
+    "testEventCode": "",
+    "waNumber": "6281234567890",
+    "waTemplate": "Halo, saya mau pesan {produk}..."
+  },
+  "shipping": {
+    "mode": "fallback",
+    "gasWebhookUrl": "https://script.google.com/...",
+    "fallbackRates": { "JNE": 15000, "J&T": 13000 }
+  },
+  "seo": {
+    "metaTitle": "Anget Pol — Beli Sekarang",
+    "metaDescription": "...",
+    "ogImage": "https://..."
+  }
+}
 
 ### 4. Internal API via Worker
 Worker expose endpoint `/api/*` untuk operasi yang butuh server-side:
@@ -243,9 +329,11 @@ LP yang sudah ada di GitHub (sebagai `.html` files) bisa dimigrate:
 - [ ] API endpoints CRUD untuk slugs
 - [ ] Test end-to-end: buat slug → akses via URL
 
-### Phase 2: Admin Dashboard
+### Phase 2: Admin Dashboard + Visual Builder
 - [ ] Slug list page (dengan status, custom domain, stats)
-- [ ] LP Builder terintegrasi (save ke KV bukan GitHub)
+- [ ] **Visual builder** — form sections per blok konten, preview realtime
+- [ ] Builder output: save cfg JSON + rendered HTML ke KV
+- [ ] Edit LP: load cfg dari KV → tampil di builder form → save ulang
 - [ ] Custom domain management UI + DNS instructions
 - [ ] Settings (admin token, GAS URL, FB Pixel global)
 
@@ -264,10 +352,19 @@ LP yang sudah ada di GitHub (sebagai `.html` files) bisa dimigrate:
 ## Open Questions untuk Roni
 
 1. **CF Account**: Apakah Roni punya Cloudflare account dengan herbahero.my.id sudah masuk zone? KV Workers perlu di-setup di sana.
-2. **Builder**: Builder tetap mau dipakai (visual drag-drop) atau cukup raw HTML editor? Ini pengaruhi kompleksitas Phase 2.
+2. ~~**Builder**: Builder tetap mau dipakai (visual drag-drop) atau cukup raw HTML editor?~~ → **ANSWERED: Visual builder ✅**
 3. **Media**: Tetap di GitHub repo atau pindah ke Cloudflare R2 (lebih proper)?
 4. **GAS**: Satu GAS webhook global atau masing-masing LP bisa punya webhook berbeda?
 
 ---
 
-*Document ini adalah proposal awal. Mulai coding setelah Roni confirm.*
+## Changelog
+
+| Tanggal | Perubahan |
+|---|---|
+| 2026-03-11 | Initial proposal |
+| 2026-03-11 | Tambah detail Visual Builder (Opsi A confirmed by Roni) |
+
+---
+
+*Document ini adalah proposal awal. Mulai coding setelah semua open questions dijawab.*
