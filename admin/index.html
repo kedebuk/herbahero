@@ -1,324 +1,694 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Order Management Dashboard</title>
-<link rel="stylesheet" href="../assets/style.css">
-<script>
-const ADMIN_CONFIG = {
-  password: "admin123",
-  webhookUrl: "https://script.google.com/macros/s/XXXXX/exec"
-};
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Herbahero Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .sidebar { width: 220px; }
+    @media (max-width: 768px) { .sidebar { display: none; } .sidebar.open { display: flex; position: fixed; z-index: 50; top: 0; left: 0; height: 100vh; } }
+    .page { display: none; } .page.active { display: block; }
+    .pkg-row input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; }
+    .drop-zone { border: 2px dashed #6366f1; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: background 0.2s; }
+    .drop-zone:hover, .drop-zone.drag-over { background: #eef2ff; }
+    .badge-active { background: #dcfce7; color: #166534; }
+    .badge-draft { background: #f3f4f6; color: #6b7280; }
+    input[type=password] { font-family: monospace; }
+  </style>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen">
 
-<!-- Login Screen -->
-<div class="admin-login" id="loginScreen">
-  <div class="login-box">
-    <h1>🔐 Dashboard Login</h1>
-    <p>Masukkan password untuk akses dashboard</p>
-    <input type="password" id="passInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button onclick="doLogin()">Masuk</button>
-    <div class="login-error" id="loginErr">Password salah</div>
+<!-- Auth Modal -->
+<div id="auth-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" style="display:none!important">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-sm mx-4 shadow-2xl">
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2">🌿</div>
+      <h2 class="text-xl font-bold text-gray-900">Herbahero Admin</h2>
+      <p class="text-sm text-gray-500 mt-1">Masukkan admin token untuk lanjut</p>
+    </div>
+    <input id="auth-input" type="password" placeholder="Admin token..." class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-indigo-500">
+    <button onclick="doLogin()" class="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-indigo-700">Masuk</button>
   </div>
 </div>
 
-<!-- Dashboard -->
-<div class="admin-wrap" id="dashboard">
-  <div class="admin-header">
-    <h1>📦 Order Management</h1>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button onclick="loadOrders()" style="padding:6px 12px;background:#dbeafe;border:1px solid #2563eb;border-radius:6px;cursor:pointer;font-size:.85rem;color:#2563eb">🔄 Refresh</button>
-      <button class="btn-logout" onclick="doLogout()">Logout</button>
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar bg-white border-r border-gray-200 flex flex-col py-6 px-3 flex-shrink-0">
+    <div class="flex items-center gap-2 px-3 mb-8">
+      <span class="text-xl">🌿</span>
+      <span class="font-bold text-gray-900">Herbahero</span>
     </div>
-  </div>
-
-  <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
-    <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total Order</div></div>
-    <div class="stat-card pending"><div class="stat-num" id="statPending">0</div><div class="stat-label">Pending</div></div>
-    <div class="stat-card process"><div class="stat-num" id="statProcess">0</div><div class="stat-label">Diproses</div></div>
-    <div class="stat-card done"><div class="stat-num" id="statDone">0</div><div class="stat-label">Selesai</div></div>
-    <div class="stat-card" style="border-left:3px solid #2563eb"><div class="stat-num" id="statRevenue" style="color:#2563eb;font-size:1.2rem">Rp 0</div><div class="stat-label">Total Revenue</div></div>
-  </div>
-
-  <div class="admin-toolbar">
-    <input type="text" id="searchInput" placeholder="Cari nama / WA / produk..." oninput="filterOrders()">
-    <select id="statusFilter" onchange="filterOrders()">
-      <option value="">Semua Status</option>
-      <option value="Pending">🟡 Pending</option>
-      <option value="Diproses">🔵 Diproses</option>
-      <option value="Dikirim">📦 Dikirim</option>
-      <option value="Selesai">✅ Selesai</option>
-    </select>
-    <input type="date" id="dateFrom" onchange="filterOrders()" title="Dari tanggal" style="max-width:150px">
-    <input type="date" id="dateTo" onchange="filterOrders()" title="Sampai tanggal" style="max-width:150px">
-    <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
-  </div>
-
-  <div class="orders-table-wrap">
-    <div id="loadingState" style="text-align:center;padding:40px;color:#9ca3af">Memuat data...</div>
-    <table class="orders-table" id="ordersTable" style="display:none">
-      <thead>
-        <tr><th>No</th><th>Tanggal</th><th>Nama</th><th>WA</th><th>Produk</th><th>Qty</th><th>Total</th><th>Bayar</th><th>Status</th><th>Aksi</th></tr>
-      </thead>
-      <tbody id="ordersBody"></tbody>
-    </table>
-    <div class="empty-state" id="emptyState" style="display:none">
-      <div style="font-size:3rem;margin-bottom:12px">📭</div>
-      <h3 style="font-size:1rem;color:#6b7280;margin-bottom:4px">Belum ada order</h3>
-      <p style="font-size:.88rem;color:#9ca3af">Order dari landing page akan muncul di sini.</p>
+    <nav class="flex flex-col gap-1">
+      <a href="#/" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+        <span>📋</span> Dashboard
+      </a>
+      <a href="#/new" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+        <span>➕</span> LP Baru
+      </a>
+      <a href="#/domains" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+        <span>🌐</span> Domain
+      </a>
+      <a href="#/settings" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+        <span>⚙️</span> Settings
+      </a>
+    </nav>
+    <div class="mt-auto px-3">
+      <button onclick="doLogout()" class="w-full text-left text-sm text-gray-400 hover:text-red-500 py-2">Logout</button>
     </div>
-  </div>
-</div>
+  </aside>
 
-<!-- Order Detail Modal -->
-<div class="modal-overlay" id="orderModal">
-  <div class="modal-box">
-    <h3>Detail Order <button class="modal-close" onclick="closeModal()">&times;</button></h3>
-    <div id="modalContent"></div>
-  </div>
+  <!-- Main -->
+  <main class="flex-1 overflow-y-auto">
+
+    <!-- Top bar -->
+    <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 md:hidden sticky top-0 z-10">
+      <button onclick="toggleSidebar()" class="text-gray-500 hover:text-gray-900">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span class="font-semibold text-gray-900">Herbahero Admin</span>
+    </div>
+
+    <div class="max-w-4xl mx-auto p-4 md:p-8">
+
+      <!-- Dashboard page -->
+      <div id="page-dashboard" class="page">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl font-bold text-gray-900">Landing Pages</h1>
+          <a href="#/new" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700">+ LP Baru</a>
+        </div>
+        <div id="lp-list" class="space-y-3">
+          <div class="text-gray-400 text-sm">Memuat...</div>
+        </div>
+      </div>
+
+      <!-- New/Edit LP page -->
+      <div id="page-form" class="page">
+        <div class="flex items-center gap-3 mb-6">
+          <a href="#/" class="text-gray-400 hover:text-gray-600 text-sm">← Kembali</a>
+          <h1 class="text-2xl font-bold text-gray-900" id="form-title">LP Baru</h1>
+        </div>
+        <form onsubmit="saveLP(event)" class="space-y-5">
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Info Produk</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk *</label>
+              <input id="f-productName" type="text" required placeholder="Anget Pol Jamu Herbal"
+                class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500"
+                oninput="autoSlug()">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Slug (URL) *</label>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-400 whitespace-nowrap">/</span>
+                <input id="f-slug" type="text" required placeholder="angetpol"
+                  class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 font-mono">
+              </div>
+              <p class="text-xs text-gray-400 mt-1">Hanya huruf, angka, dan tanda hubung</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="f-status" class="border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+                <option value="active">Aktif</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Paket Produk</h3>
+              <button type="button" onclick="addPkg()" class="text-indigo-600 text-sm font-medium hover:text-indigo-800">+ Tambah Paket</button>
+            </div>
+            <div id="pkg-rows" class="space-y-2"></div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Pembayaran</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Metode *</label>
+              <div class="flex gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="payment-method" value="bank_transfer" id="pm-bt" onchange="toggleBank()"> 
+                  <span class="text-sm">Bank Transfer</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="payment-method" value="cod" id="pm-cod" onchange="toggleBank()" checked>
+                  <span class="text-sm">COD</span>
+                </label>
+              </div>
+            </div>
+            <div id="bank-fields" class="space-y-3" style="display:none">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
+                <input id="f-bankName" type="text" placeholder="BCA, BRI, Mandiri..." class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening</label>
+                <input id="f-accountNumber" type="text" placeholder="1234567890" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Atas Nama</label>
+                <input id="f-accountName" type="text" placeholder="PT Herbahero" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Integrasi</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp</label>
+              <input id="f-waNumber" type="tel" placeholder="6281234567890" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+              <p class="text-xs text-gray-400 mt-1">Format: 62xxx tanpa tanda + atau spasi</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">GAS Webhook URL</label>
+              <input id="f-gasWebhookUrl" type="url" placeholder="https://script.google.com/macros/s/..." class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">FB Pixel ID <span class="text-gray-400 font-normal">(opsional)</span></label>
+              <input id="f-pixelId" type="text" placeholder="Kosongkan untuk pakai pixel global" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <!-- JPG Upload (only on edit) -->
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4" id="jpg-section" style="display:none">
+            <h3 class="font-semibold text-gray-900">Gambar LP</h3>
+            <img id="jpg-preview" src="" alt="" class="w-full rounded-xl mb-3" style="display:none">
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('jpg-input').click()">
+              <div class="text-3xl mb-2">🖼️</div>
+              <p class="text-sm font-medium text-gray-700">Drop JPG/PNG di sini atau klik untuk pilih</p>
+              <p class="text-xs text-gray-400 mt-1">Rekomendasi: 750×1334px (rasio 9:16)</p>
+            </div>
+            <input type="file" id="jpg-input" accept="image/*" class="hidden" onchange="uploadJpg(event)">
+            <div id="upload-status" class="text-sm text-center" style="display:none"></div>
+          </div>
+
+          <button type="submit" id="save-btn" class="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold hover:bg-indigo-700 transition-colors">
+            Simpan LP
+          </button>
+        </form>
+      </div>
+
+      <!-- Settings page -->
+      <div id="page-settings" class="page">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Settings Global</h1>
+        <form onsubmit="saveSettings(event)" class="space-y-5">
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Gudang Asal (Ongkir)</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kota/Kecamatan</label>
+              <input id="s-warehouseCity" type="text" placeholder="Jakarta Selatan" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">City ID (dari RajaOngkir)</label>
+              <input id="s-warehouseCityId" type="text" placeholder="151" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 font-mono">
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">API Lincah (Ongkir)</h3>
+            <p class="text-xs text-gray-400">Agregator kurir. Isi setelah dapat dokumentasi endpoint dari member area Lincah.</p>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+              <div class="flex gap-2">
+                <input id="s-lincahApiKey" type="password" placeholder="API key Lincah" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+                <button type="button" onclick="togglePwd('s-lincahApiKey')" class="px-3 text-gray-400 hover:text-gray-600 text-sm border border-gray-300 rounded-xl">👁</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
+              <input id="s-lincahApiUrl" type="url" placeholder="https://api.lincah.id/v1 (nanti diisi)" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+              <p class="text-xs text-gray-400 mt-1">Kosongkan dulu — LP otomatis pakai tarif statis sementara</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Analytics & Tracking</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Default GAS Webhook URL</label>
+              <input id="s-gasWebhookUrl" type="url" placeholder="https://script.google.com/..." class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Default FB Pixel ID</label>
+              <input id="s-fbPixelId" type="text" placeholder="123456789012345" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Default CAPI Token</label>
+              <div class="flex gap-2">
+                <input id="s-capiToken" type="password" placeholder="EAAxxxxxxx" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+                <button type="button" onclick="togglePwd('s-capiToken')" class="px-3 text-gray-400 hover:text-gray-600 text-sm border border-gray-300 rounded-xl">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-semibold text-gray-900">Security</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Admin Token</label>
+              <div class="flex gap-2">
+                <input id="s-adminToken" type="password" placeholder="Token rahasia untuk admin" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+                <button type="button" onclick="togglePwd('s-adminToken')" class="px-3 text-gray-400 hover:text-gray-600 text-sm border border-gray-300 rounded-xl">👁</button>
+              </div>
+              <p class="text-xs text-orange-500 mt-1">⚠️ Simpan dulu token lama sebelum diubah</p>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold hover:bg-indigo-700">
+            Simpan Settings
+          </button>
+        </form>
+      </div>
+
+      <!-- Domains page -->
+      <div id="page-domains" class="page">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Custom Domain</h1>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+          <strong>Cara pakai:</strong> Add domain di bawah, lalu set CNAME di DNS provider kamu:
+          <code class="bg-blue-100 px-1 rounded">your-domain.com → herbahero.my.id</code>
+        </div>
+
+        <div id="domains-list" class="space-y-3 mb-6">
+          <div class="text-gray-400 text-sm">Memuat...</div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm">
+          <h3 class="font-semibold text-gray-900 mb-4">Tambah Domain</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
+              <input id="d-domain" type="text" placeholder="angetpol.com" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Slug LP</label>
+              <select id="d-slug" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500">
+                <option value="">Pilih LP...</option>
+              </select>
+            </div>
+            <button onclick="addDomain()" class="w-full bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-indigo-700">
+              Tambah Domain
+            </button>
+          </div>
+          <div id="dns-instructions" class="mt-4" style="display:none"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toast"></div>
+<div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-3 rounded-xl text-sm font-medium shadow-xl z-50 transition-all" style="display:none"></div>
 
 <script>
-(function(){
-  var allOrders = [];
-  var filteredOrders = [];
+// ── Auth ─────────────────────────────────────────────────────────────────────
+function getToken() { return sessionStorage.getItem('adminToken') || ''; }
+function doLogin() {
+  const v = document.getElementById('auth-input').value.trim();
+  if (!v) return;
+  sessionStorage.setItem('adminToken', v);
+  document.getElementById('auth-modal').style.display = 'none';
+  route();
+}
+function doLogout() {
+  sessionStorage.removeItem('adminToken');
+  showAuth();
+}
+function showAuth() {
+  document.getElementById('auth-modal').style.removeProperty('display');
+}
+document.getElementById('auth-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-  // Check session
-  if(localStorage.getItem('admin_logged_in')==='true'){showDashboard();}
-
-  window.doLogin = function(){
-    var pass = document.getElementById('passInput').value;
-    if(pass === ADMIN_CONFIG.password){
-      localStorage.setItem('admin_logged_in','true');
-      showDashboard();
-    } else {
-      var err = document.getElementById('loginErr');
-      err.style.display='block';
-      setTimeout(function(){err.style.display='none';},2000);
-    }
+// ── API ──────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }
   };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (r.status === 401) { showAuth(); throw new Error('Unauthorized'); }
+  return r.json();
+}
 
-  window.doLogout = function(){
-    localStorage.removeItem('admin_logged_in');
-    document.getElementById('dashboard').style.display='none';
-    document.getElementById('loginScreen').style.display='flex';
-  };
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'ok' ? '#16a34a' : '#dc2626';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
 
-  function showDashboard(){
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    loadOrders();
+// ── Router ───────────────────────────────────────────────────────────────────
+function route() {
+  if (!getToken()) { showAuth(); return; }
+  const hash = location.hash || '#/';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('bg-indigo-50', 'text-indigo-700'));
+
+  if (hash === '#/' || hash === '') {
+    showPage('dashboard'); loadDashboard();
+    highlightNav('#/');
+  } else if (hash === '#/new') {
+    showPage('form'); setupFormNew();
+    highlightNav('#/new');
+  } else if (hash.startsWith('#/edit/')) {
+    const slug = hash.replace('#/edit/', '');
+    showPage('form'); setupFormEdit(slug);
+  } else if (hash === '#/settings') {
+    showPage('settings'); loadSettings();
+    highlightNav('#/settings');
+  } else if (hash === '#/domains') {
+    showPage('domains'); loadDomains();
+    highlightNav('#/domains');
   }
+}
 
-  window.loadOrders = function(){
-    document.getElementById('loadingState').style.display='block';
-    document.getElementById('ordersTable').style.display='none';
-    document.getElementById('emptyState').style.display='none';
+function showPage(name) {
+  document.getElementById('page-' + name).classList.add('active');
+}
+function highlightNav(href) {
+  document.querySelectorAll('.nav-link').forEach(l => {
+    if (l.getAttribute('href') === href) l.classList.add('bg-indigo-50', 'text-indigo-700');
+  });
+}
 
-    fetch(ADMIN_CONFIG.webhookUrl + '?action=get_orders')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.success && d.orders){
-        allOrders = d.orders.reverse(); // newest first
-        updateStats();
-        filterOrders();
-      } else {
-        document.getElementById('loadingState').innerHTML = '<span style="color:#dc2626">Gagal memuat: '+(d.error||'Unknown error')+'</span>';
-      }
-    })
-    .catch(function(err){
-      document.getElementById('loadingState').innerHTML = '<span style="color:#dc2626">Error koneksi: '+err.message+'<br><small>Pastikan URL webhook sudah benar dan GAS sudah di-deploy</small></span>';
-    });
-  };
+window.addEventListener('hashchange', route);
+window.addEventListener('DOMContentLoaded', route);
 
-  function updateStats(){
-    var total=allOrders.length, pending=0, process=0, done=0, revenue=0;
-    allOrders.forEach(function(o){
-      var s = (o.status||'').toLowerCase();
-      if(s==='pending') pending++;
-      else if(s==='diproses') process++;
-      else if(s==='selesai'||s==='dikirim') done++;
-      revenue += parseInt(o.total)||0;
-    });
-    document.getElementById('statTotal').textContent = total;
-    document.getElementById('statPending').textContent = pending;
-    document.getElementById('statProcess').textContent = process;
-    document.getElementById('statDone').textContent = done;
-    document.getElementById('statRevenue').textContent = 'Rp '+revenue.toLocaleString('id-ID');
-  }
-
-  function renderOrders(orders){
-    document.getElementById('loadingState').style.display='none';
-    if(!orders.length){
-      document.getElementById('ordersTable').style.display='none';
-      document.getElementById('emptyState').style.display='block';
+// ── Dashboard ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const el = document.getElementById('lp-list');
+  el.innerHTML = '<div class="text-gray-400 text-sm">Memuat...</div>';
+  try {
+    const { data: slugs } = await api('GET', '/api/slugs');
+    if (!slugs || !slugs.length) {
+      el.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-gray-400"><div class="text-4xl mb-3">📭</div><p>Belum ada LP. <a href="#/new" class="text-indigo-600 font-medium">Buat yang pertama →</a></p></div>';
       return;
     }
-    document.getElementById('ordersTable').style.display='table';
-    document.getElementById('emptyState').style.display='none';
-    var html='';
-    orders.forEach(function(o,i){
-      var badge='badge-pending',statusLabel=o.status||'Pending';
-      var s=(o.status||'').toLowerCase();
-      if(s==='diproses') badge='badge-process';
-      else if(s==='dikirim') badge='badge-shipped';
-      else if(s==='selesai') badge='badge-done';
-      html += '<tr style="cursor:pointer" onclick="showOrderDetail('+i+')">';
-      html += '<td>'+(i+1)+'</td>';
-      html += '<td style="white-space:nowrap">'+(o.timestamp||'-')+'</td>';
-      html += '<td><strong>'+esc(o.nama||'')+'</strong></td>';
-      html += '<td><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank" onclick="event.stopPropagation()">'+esc(o.wa||'')+'</a></td>';
-      html += '<td>'+esc(o.produk||'')+'</td>';
-      html += '<td>'+(o.qty||1)+'</td>';
-      html += '<td><strong>Rp '+(parseInt(o.total)||0).toLocaleString('id-ID')+'</strong></td>';
-      html += '<td>'+esc(o.metodebayar||o.metodeBayar||'')+'</td>';
-      html += '<td><span class="badge '+badge+'">'+statusLabel+'</span></td>';
-      html += '<td><select class="status-select" onclick="event.stopPropagation()" onchange="updateStatus(\''+o.id+'\',this.value)">';
-      ['Pending','Diproses','Dikirim','Selesai'].forEach(function(st){
-        html += '<option value="'+st+'"'+(st===statusLabel?' selected':'')+'>'+st+'</option>';
-      });
-      html += '</select></td></tr>';
-    });
-    document.getElementById('ordersBody').innerHTML = html;
+    const configs = await Promise.all(slugs.map(s => api('GET', '/api/slugs/' + s).then(r => r.data).catch(() => null)));
+    el.innerHTML = configs.filter(Boolean).map(cfg => `
+      <div class="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-semibold text-gray-900 truncate">${esc(cfg.productName)}</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${cfg.status === 'active' ? 'badge-active' : 'badge-draft'}">${cfg.status === 'active' ? 'Aktif' : 'Draft'}</span>
+          </div>
+          <div class="text-sm text-gray-500">/${esc(cfg.slug)}</div>
+          ${cfg.customDomain ? `<a href="https://${esc(cfg.customDomain)}" target="_blank" class="text-xs text-indigo-500 hover:underline">${esc(cfg.customDomain)}</a>` : ''}
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a href="/${esc(cfg.slug)}" target="_blank" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">Preview</a>
+          <a href="#/edit/${esc(cfg.slug)}" class="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100">Edit</a>
+          <button onclick="deleteLP('${esc(cfg.slug)}')" class="px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg">Hapus</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="text-red-500 text-sm">Error memuat data: ' + esc(e.message) + '</div>';
   }
+}
 
-  window.filterOrders = function(){
-    var q = document.getElementById('searchInput').value.toLowerCase();
-    var sf = document.getElementById('statusFilter').value;
-    var dateFrom = document.getElementById('dateFrom').value;
-    var dateTo = document.getElementById('dateTo').value;
+async function deleteLP(slug) {
+  if (!confirm('Hapus LP "' + slug + '"? Tidak bisa dibatalkan.')) return;
+  await api('DELETE', '/api/slugs/' + slug);
+  toast('LP dihapus'); loadDashboard();
+}
 
-    filteredOrders = allOrders.filter(function(o){
-      var matchSearch = !q || (o.nama||'').toLowerCase().indexOf(q)>-1 || (o.wa||'').indexOf(q)>-1 || (o.produk||'').toLowerCase().indexOf(q)>-1;
-      var matchStatus = !sf || o.status===sf;
-      var matchDate = true;
-      if(dateFrom || dateTo){
-        var orderDate = parseOrderDate(o.timestamp||'');
-        if(orderDate){
-          if(dateFrom){
-            var from = new Date(dateFrom); from.setHours(0,0,0,0);
-            if(orderDate < from) matchDate = false;
-          }
-          if(dateTo){
-            var to = new Date(dateTo); to.setHours(23,59,59,999);
-            if(orderDate > to) matchDate = false;
-          }
-        }
-      }
-      return matchSearch && matchStatus && matchDate;
-    });
-    renderOrders(filteredOrders);
-  };
+// ── LP Form ──────────────────────────────────────────────────────────────────
+let editingSlug = null;
 
-  function parseOrderDate(ts){
-    if(!ts) return null;
-    var d = new Date(ts);
-    if(!isNaN(d.getTime())) return d;
-    // Indonesian format "DD/MM/YYYY HH:mm:ss"
-    var m = ts.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if(m) return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
-    return null;
-  }
+function setupFormNew() {
+  editingSlug = null;
+  document.getElementById('form-title').textContent = 'LP Baru';
+  document.getElementById('f-slug').disabled = false;
+  document.getElementById('jpg-section').style.display = 'none';
+  clearForm();
+  addPkg(); // default 1 pkg row
+}
 
-  /* Order detail modal */
-  window.showOrderDetail = function(idx){
-    var o = filteredOrders[idx];
-    if(!o) return;
-    var h = '';
-    var fields = [
-      ['ID Order', o.id||'-'],
-      ['Tanggal', o.timestamp||'-'],
-      ['Nama', o.nama||'-'],
-      ['WhatsApp', o.wa||'-'],
-      ['Alamat', o.alamat||'-'],
-      ['Kecamatan', o.kecamatan||'-'],
-      ['Kota', o.kota||'-'],
-      ['Provinsi', o.provinsi||'-'],
-      ['Wilayah', o.wilayah||'-'],
-      ['Produk', o.produk||'-'],
-      ['Qty', ''+(o.qty||1)],
-      ['Ongkir', 'Rp '+(parseInt(o.ongkir)||0).toLocaleString('id-ID')],
-      ['Total', 'Rp '+(parseInt(o.total)||0).toLocaleString('id-ID')],
-      ['Pembayaran', o.metodebayar||o.metodeBayar||'-'],
-      ['Catatan', o.catatan||'-'],
-      ['LP Source', o.lpsource||o.lpSource||'-'],
-      ['UTM Source', o.utm_source||'-'],
-      ['UTM Medium', o.utm_medium||'-'],
-      ['UTM Campaign', o.utm_campaign||'-'],
-      ['Status', o.status||'Pending']
-    ];
-    fields.forEach(function(f){
-      if(f[1] && f[1]!=='-'){
-        h += '<div class="modal-row"><span class="lbl">'+f[0]+'</span><span class="val">'+esc(f[1])+'</span></div>';
-      }
-    });
-    h += '<div style="margin-top:16px;text-align:center"><a href="https://wa.me/'+cleanWa(o.wa)+'" target="_blank" style="display:inline-block;padding:10px 20px;background:#25d366;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:.9rem">💬 Chat via WhatsApp</a></div>';
-    document.getElementById('modalContent').innerHTML = h;
-    document.getElementById('orderModal').classList.add('open');
-  };
+async function setupFormEdit(slug) {
+  editingSlug = slug;
+  document.getElementById('form-title').textContent = 'Edit LP';
+  document.getElementById('f-slug').disabled = true;
+  document.getElementById('jpg-section').style.display = 'block';
+  clearForm();
+  const { data: cfg } = await api('GET', '/api/slugs/' + slug);
+  fillForm(cfg);
+}
 
-  window.closeModal = function(){
-    document.getElementById('orderModal').classList.remove('open');
-  };
-
-  // Escape key closes modal
-  document.addEventListener('keydown', function(e){
-    if(e.key==='Escape') closeModal();
+function clearForm() {
+  ['f-productName','f-slug','f-waNumber','f-gasWebhookUrl','f-pixelId',
+   'f-bankName','f-accountNumber','f-accountName'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
+  document.getElementById('f-status').value = 'active';
+  document.getElementById('pm-cod').checked = true;
+  document.getElementById('bank-fields').style.display = 'none';
+  document.getElementById('pkg-rows').innerHTML = '';
+  document.getElementById('jpg-preview').style.display = 'none';
+}
 
-  // Click overlay to close
-  document.getElementById('orderModal').addEventListener('click', function(e){
-    if(e.target===this) closeModal();
-  });
+function fillForm(cfg) {
+  document.getElementById('f-productName').value = cfg.productName || '';
+  document.getElementById('f-slug').value = cfg.slug || '';
+  document.getElementById('f-status').value = cfg.status || 'active';
+  document.getElementById('f-waNumber').value = cfg.waNumber || '';
+  document.getElementById('f-gasWebhookUrl').value = cfg.gasWebhookUrl || '';
+  document.getElementById('f-pixelId').value = cfg.analytics?.fbPixelId || '';
 
-  window.updateStatus = function(id, status){
-    fetch(ADMIN_CONFIG.webhookUrl + '?action=update_status&id='+encodeURIComponent(id)+'&status='+encodeURIComponent(status))
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.success){
-        allOrders.forEach(function(o){if(o.id===id) o.status=status;});
-        updateStats();
-        filterOrders();
-        showToast('Status berhasil diupdate ke "'+status+'"', 'toast-success');
-      } else {
-        showToast('Gagal update: '+(d.error||''), 'toast-error');
-      }
-    })
-    .catch(function(){showToast('Error koneksi', 'toast-error');});
-  };
-
-  /* Toast notification */
-  function showToast(msg, cls){
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast '+(cls||'toast-info')+' show';
-    clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(function(){t.classList.remove('show');}, 3000);
+  const pm = cfg.payment?.method || 'cod';
+  document.getElementById(pm === 'bank_transfer' ? 'pm-bt' : 'pm-cod').checked = true;
+  toggleBank();
+  if (pm === 'bank_transfer') {
+    document.getElementById('f-bankName').value = cfg.payment?.bankName || '';
+    document.getElementById('f-accountNumber').value = cfg.payment?.accountNumber || '';
+    document.getElementById('f-accountName').value = cfg.payment?.accountName || '';
   }
 
-  window.exportCSV = function(){
-    if(!allOrders.length){alert('Tidak ada data');return;}
-    var headers = ['ID','Tanggal','Nama','WA','Alamat','Kecamatan','Kota','Provinsi','Wilayah','Produk','Qty','Ongkir','Total','MetodeBayar','Catatan','Status','UTM_Source','UTM_Medium','UTM_Campaign'];
-    var rows = [headers.join(',')];
-    allOrders.forEach(function(o){
-      rows.push([o.id,'"'+(o.timestamp||'')+'"','"'+esc(o.nama||'')+'"',o.wa,'"'+esc(o.alamat||'')+'"','"'+esc(o.kecamatan||'')+'"','"'+esc(o.kota||'')+'"','"'+esc(o.provinsi||'')+'"','"'+esc(o.wilayah||'')+'"','"'+esc(o.produk||'')+'"',o.qty,o.ongkir,o.total,o.metodebayar||o.metodeBayar,'"'+esc(o.catatan||'')+'"',o.status,o.utm_source||'',o.utm_medium||'',o.utm_campaign||''].join(','));
-    });
-    var blob = new Blob([rows.join('\n')],{type:'text/csv'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'orders_'+new Date().toISOString().slice(0,10)+'.csv';
-    a.click();
+  document.getElementById('pkg-rows').innerHTML = '';
+  (cfg.packages || []).forEach(p => addPkg(p));
+
+  if (cfg.jpgUrl) {
+    const img = document.getElementById('jpg-preview');
+    img.src = cfg.jpgUrl; img.style.display = 'block';
+  }
+}
+
+function autoSlug() {
+  if (editingSlug) return;
+  const v = document.getElementById('f-productName').value;
+  document.getElementById('f-slug').value = v.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+}
+
+function toggleBank() {
+  const bt = document.getElementById('pm-bt').checked;
+  document.getElementById('bank-fields').style.display = bt ? 'block' : 'none';
+}
+
+let pkgCount = 0;
+function addPkg(data = {}) {
+  const id = pkgCount++;
+  const row = document.createElement('div');
+  row.className = 'pkg-row flex items-center gap-2';
+  row.id = 'pkg-' + id;
+  row.innerHTML = `
+    <input type="text" placeholder="Label (cth: 1 Botol)" value="${esc(data.label||'')}" class="flex-1" data-field="label">
+    <input type="number" placeholder="Qty" value="${data.qty||1}" min="1" style="width:60px" data-field="qty">
+    <input type="number" placeholder="Harga" value="${data.price||''}" min="0" style="width:100px" data-field="price">
+    <button type="button" onclick="document.getElementById('pkg-${id}').remove()" class="text-red-400 hover:text-red-600 px-2 text-lg">×</button>`;
+  document.getElementById('pkg-rows').appendChild(row);
+}
+
+function getPackages() {
+  return [...document.querySelectorAll('.pkg-row')].map(row => ({
+    label: row.querySelector('[data-field=label]').value,
+    qty: parseInt(row.querySelector('[data-field=qty]').value) || 1,
+    price: parseInt(row.querySelector('[data-field=price]').value) || 0,
+  })).filter(p => p.label);
+}
+
+async function saveLP(e) {
+  e.preventDefault();
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  const pm = document.querySelector('input[name=payment-method]:checked')?.value || 'cod';
+  const payment = { method: pm };
+  if (pm === 'bank_transfer') {
+    payment.bankName = document.getElementById('f-bankName').value;
+    payment.accountNumber = document.getElementById('f-accountNumber').value;
+    payment.accountName = document.getElementById('f-accountName').value;
+  }
+
+  const pixelId = document.getElementById('f-pixelId').value.trim();
+  const body = {
+    productName: document.getElementById('f-productName').value,
+    slug: document.getElementById('f-slug').value,
+    status: document.getElementById('f-status').value,
+    packages: getPackages(),
+    payment,
+    waNumber: document.getElementById('f-waNumber').value,
+    gasWebhookUrl: document.getElementById('f-gasWebhookUrl').value,
+    analytics: pixelId ? { fbPixelId: pixelId } : {},
   };
 
-  function esc(s){return s?String(s).replace(/"/g,'""'):'';}
-  function cleanWa(w){return (w||'').replace(/[^0-9]/g,'').replace(/^0/,'62');}
-})();
+  try {
+    if (editingSlug) {
+      await api('PUT', '/api/slugs/' + editingSlug, body);
+      toast('LP berhasil diupdate ✅');
+    } else {
+      await api('POST', '/api/slugs', body);
+      toast('LP berhasil dibuat ✅');
+      location.hash = '#/';
+    }
+  } catch(err) {
+    toast('Error: ' + err.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Simpan LP';
+}
+
+// ── JPG Upload ───────────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+function uploadJpg(e) { handleFile(e.target.files[0]); }
+
+async function handleFile(file) {
+  if (!file || !editingSlug) return;
+  const status = document.getElementById('upload-status');
+  status.style.display = 'block'; status.textContent = '⏳ Mengupload...'; status.className = 'mt-2 text-sm text-center text-gray-500';
+
+  const fd = new FormData();
+  fd.append('jpg', file);
+
+  const r = await fetch('/api/slugs/' + editingSlug + '/upload', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + getToken() },
+    body: fd,
+  });
+  const j = await r.json();
+  if (j.ok) {
+    const img = document.getElementById('jpg-preview');
+    img.src = j.jpgUrl + '?t=' + Date.now(); img.style.display = 'block';
+    status.textContent = '✅ Upload berhasil'; status.className = 'mt-2 text-sm text-center text-green-600';
+  } else {
+    status.textContent = '❌ ' + (j.error || 'Upload gagal'); status.className = 'mt-2 text-sm text-center text-red-500';
+  }
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const { data } = await api('GET', '/api/global');
+  if (!data) return;
+  document.getElementById('s-warehouseCity').value = data.warehouseOrigin?.city || '';
+  document.getElementById('s-warehouseCityId').value = data.warehouseOrigin?.cityId || '';
+  document.getElementById('s-lincahApiKey').value = data.lincahApiKey || '';
+  document.getElementById('s-lincahApiUrl').value = data.lincahApiUrl || '';
+  document.getElementById('s-gasWebhookUrl').value = data.gasWebhookUrl || '';
+  document.getElementById('s-fbPixelId').value = data.analytics?.fbPixelId || '';
+  document.getElementById('s-capiToken').value = data.analytics?.capiToken || '';
+}
+
+async function saveSettings(e) {
+  e.preventDefault();
+  const body = {
+    warehouseOrigin: {
+      city: document.getElementById('s-warehouseCity').value,
+      cityId: document.getElementById('s-warehouseCityId').value,
+    },
+    lincahApiKey: document.getElementById('s-lincahApiKey').value,
+    lincahApiUrl: document.getElementById('s-lincahApiUrl').value,
+    gasWebhookUrl: document.getElementById('s-gasWebhookUrl').value,
+    analytics: {
+      fbPixelId: document.getElementById('s-fbPixelId').value,
+      capiToken: document.getElementById('s-capiToken').value,
+    },
+  };
+  const adminToken = document.getElementById('s-adminToken').value.trim();
+  if (adminToken) body.adminToken = adminToken;
+
+  await api('PUT', '/api/global', body);
+  if (adminToken) { sessionStorage.setItem('adminToken', adminToken); }
+  toast('Settings tersimpan ✅');
+}
+
+// ── Domains ──────────────────────────────────────────────────────────────────
+async function loadDomains() {
+  const [{ data: domains }, { data: slugs }] = await Promise.all([
+    api('GET', '/api/domains'),
+    api('GET', '/api/slugs'),
+  ]);
+
+  const list = document.getElementById('domains-list');
+  if (!domains || !domains.length) {
+    list.innerHTML = '<div class="text-gray-400 text-sm">Belum ada custom domain.</div>';
+  } else {
+    list.innerHTML = domains.map(d => `
+      <div class="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3">
+        <div class="flex-1">
+          <a href="https://${esc(d.domain)}" target="_blank" class="font-medium text-gray-900 hover:text-indigo-600">${esc(d.domain)}</a>
+          <div class="text-xs text-gray-500 mt-0.5">→ /${esc(d.slug)}</div>
+        </div>
+        <button onclick="deleteDomain('${esc(d.domain)}')" class="text-xs text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg">Hapus</button>
+      </div>`).join('');
+  }
+
+  // populate slug select
+  const sel = document.getElementById('d-slug');
+  sel.innerHTML = '<option value="">Pilih LP...</option>' + (slugs || []).map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+
+async function addDomain() {
+  const domain = document.getElementById('d-domain').value.trim();
+  const slug = document.getElementById('d-slug').value;
+  if (!domain || !slug) { alert('Lengkapi domain dan slug'); return; }
+  const { ok, instructions } = await api('POST', '/api/domains', { domain, slug });
+  if (ok) {
+    document.getElementById('dns-instructions').style.display = 'block';
+    document.getElementById('dns-instructions').innerHTML =
+      `<div class="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+        ✅ Domain ditambahkan!<br><br>
+        <strong>Langkah selanjutnya:</strong><br>
+        Di DNS provider kamu, set:<br>
+        <code class="bg-green-100 px-2 py-0.5 rounded">${esc(domain)}</code> →
+        <code class="bg-green-100 px-2 py-0.5 rounded">CNAME → herbahero.my.id</code><br><br>
+        SSL akan auto-provision oleh Cloudflare dalam beberapa menit.
+      </div>`;
+    document.getElementById('d-domain').value = '';
+    loadDomains();
+  }
+}
+
+async function deleteDomain(domain) {
+  if (!confirm('Hapus domain ' + domain + '?')) return;
+  await api('DELETE', '/api/domains/' + domain);
+  toast('Domain dihapus'); loadDomains();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function togglePwd(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+}
 </script>
 </body>
 </html>

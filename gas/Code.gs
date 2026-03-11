@@ -120,33 +120,61 @@ function doPost(e) {
       return json({ ok: true });
     }
 
-    var sh = getSheet();
     var id = genId();
     var ts = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    sh.appendRow([
-      id, ts,
-      d.nama       || '',
-      d.wa         || '',
-      d.alamat     || '',
-      d.kecamatan  || '',
-      d.kota       || '',
-      d.provinsi   || '',
-      d.wilayah    || '',
-      d.produk     || '',
-      d.qty        || 1,
-      d.ongkir     || 0,
-      d.total      || 0,
-      d.metodeBayar || d.bayar || '',
-      d.catatan    || '',
-      d.upsell     || '',
-      d.lpSource   || d.src || '',
-      'Pending',
-      d.utm_source   || '',
-      d.utm_medium   || '',
-      d.utm_campaign || '',
-      d.utm_content  || ''
-    ]);
+    /* ── Per-slug sheet (new format) ── */
+    var slug = d.slug || '';
+    if (slug) {
+      var slugSheet = ss.getSheetByName(slug) || ss.insertSheet(slug);
+      if (slugSheet.getLastRow() === 0) {
+        slugSheet.appendRow(['Timestamp','Nama','HP','Alamat','Kecamatan','Paket','Qty',
+          'Harga Produk','Kurir','Ongkir','Total','Payment','Order ID']);
+        slugSheet.getRange('A1:M1').setFontWeight('bold');
+      }
+      slugSheet.appendRow([
+        ts,
+        d.nama           || '',
+        d.hp             || d.wa || '',
+        d.alamat         || '',
+        d.kecamatan      || '',
+        d.paket_label    || d.produk || '',
+        d.paket_qty      || d.qty || 1,
+        d.harga_produk   || 0,
+        d.kurir          || '',
+        d.ongkir         || 0,
+        d.total          || 0,
+        d.payment_method || d.metodeBayar || '',
+        id
+      ]);
+    } else {
+      /* ── Fallback: legacy Orders sheet ── */
+      var sh = getSheet();
+      sh.appendRow([
+        id, ts,
+        d.nama       || '',
+        d.wa || d.hp || '',
+        d.alamat     || '',
+        d.kecamatan  || '',
+        d.kota       || '',
+        d.provinsi   || '',
+        d.wilayah    || '',
+        d.paket_label || d.produk || '',
+        d.paket_qty  || d.qty || 1,
+        d.ongkir     || 0,
+        d.total      || 0,
+        d.payment_method || d.metodeBayar || d.bayar || '',
+        d.catatan    || '',
+        d.upsell     || '',
+        d.lpSource   || d.src || '',
+        'Pending',
+        d.utm_source   || '',
+        d.utm_medium   || '',
+        d.utm_campaign || '',
+        d.utm_content  || ''
+      ]);
+    }
 
     /* Kirim CAPI server-side (tidak mempengaruhi respons order) */
     sendCAPI(d, id);

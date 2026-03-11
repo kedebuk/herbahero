@@ -1,0 +1,21 @@
+name = "herbahero"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "FILL_AFTER_CREATE"
+preview_id = "FILL_AFTER_CREATE"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "herbahero-media"
+
+[vars]
+MEDIA_BASE_URL = "https://media.herbahero.my.id"
+# LINCAH_API_URL = "https://api.lincah.id/v1"  # fill once doc is available
+
+# Secrets (set via: wrangler secret put <NAME>)
+# ADMIN_TOKEN
+# LINCAH_API_KEY   = "saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP"   # API Lincah key
+# LINCAH_API_URL   = ""  # fill once endpoint doc is confirmed
