@@ -1,370 +1,287 @@
-# Herbahero — Architecture Proposal
-**Revisi: Multi-Slug LP Platform**
+# Herbahero — Architecture (Revised v2)
+**Revisi: JPG-based LP Platform with Overlay Order Form**
 
-> Status: Draft — menunggu approval sebelum implementasi dimulai.
-
----
-
-## Problem Statement (Koreksi Arah)
-
-Arsitektur sebelumnya memperlakukan herbahero seperti _GitHub Pages static site builder_ — tiap LP di-deploy sebagai file `.html` ke repo. Ini **salah arah**.
-
-**Yang dibutuhkan:**  
-Platform terpusat (`herbahero.my.id`) yang:
-- Melayani banyak LP melalui slug unik
-- Support custom domain per slug
-- Satu admin dashboard untuk manage semua slug
-- **Visual builder** di dalam dashboard — user isi konten lewat form/editor, bukan upload HTML manual
+> Status: Draft v2 — menunggu konfirmasi open questions sebelum coding
 
 ---
 
-## Target Arsitektur
+## Konsep Inti
+
+**Bukan** visual HTML builder. **Bukan** template system.
+
+Platform ini bekerja seperti ini:
+1. Admin upload **file JPG** sebagai konten LP (desain sudah jadi, dibuat di Canva/Figma/dll)
+2. Platform serve JPG tersebut sebagai halaman LP
+3. **Form order** di-overlay di atas JPG — isi nama, HP, alamat, pilih produk
+4. Form otomatis kalkulasi ongkir via RajaOngkir Komerce API
+5. Order masuk ke Google Sheets via GAS webhook
+
+---
+
+## User Flow (End-to-end)
 
 ```
-User → angetpol.com (CNAME → herbahero.my.id)
-           │
-           ▼
-   Cloudflare Worker (edge router)
-           │
-   ┌───────┴───────┐
-   │  Check host   │
-   │  "angetpol.com"│
-   │  → lookup KV  │
-   └───────┬───────┘
-           │ domain:angetpol.com = "angetpol"
-           ▼
-   KV: lp:angetpol:html  → serve HTML
-   KV: lp:angetpol:cfg   → metadata
-
-OR:
-
-User → herbahero.my.id/angetpol
-           │
-           ▼
-   Cloudflare Worker
-           │
-   slug = "angetpol"
-           ▼
-   KV: lp:angetpol:html  → serve HTML
+[Admin]
+  Upload JPG ke admin dashboard
+  Set config per slug: nama produk, harga paket, payment method
+  (Global settings: gudang asal, RajaOngkir key, GAS webhook URL)
+       ↓
+[Platform]
+  Simpan JPG ke storage (Cloudflare R2)
+  Simpan config ke Cloudflare KV
+       ↓
+[Customer visit: herbahero.my.id/angetpol atau angetpol.com]
+  Halaman tampil: JPG sebagai background/hero image
+  Form order floating/overlay di bawah atau samping JPG
+  Customer isi:
+    - Nama lengkap
+    - Nomor HP
+    - Alamat lengkap
+    - Kecamatan/kota tujuan
+    - Pilih paket produk
+  Sistem kalkulasi ongkir otomatis (RajaOngkir Komerce API)
+  Customer konfirmasi → submit order
+       ↓
+[GAS / Backend]
+  Order masuk ke Google Sheets
+  FB Pixel + CAPI event fired (Purchase/Lead)
+  [TBD] Payment: gateway atau instruksi manual transfer
 ```
 
 ---
 
 ## Komponen
 
-### 1. Cloudflare Worker — Main Router
+### 1. Cloudflare Worker — Router
 **File:** `worker/router.js`
 
-Tanggung jawab:
-- Handle semua request masuk ke `herbahero.my.id`
-- Deteksi apakah request dari custom domain atau slug path
-- Ambil LP content dari KV store
-- Serve HTML response
-- Route `/admin/*` ke admin SPA
-- Route `/api/*` ke internal API endpoints
+Sama dengan proposal sebelumnya:
+- Route `herbahero.my.id/:slug` → serve LP page
+- Route custom domain → lookup slug di KV → serve LP page
+- Route `/admin/*` → serve admin SPA
+- Route `/api/*` → internal CRUD API
 
-```javascript
-// Routing logic pseudo-code
-if (host !== "herbahero.my.id") {
-  // Custom domain
-  slug = await KV.get(`domain:${host}`)
-} else {
-  slug = url.pathname.slice(1).split("/")[0]  // /angetpol → "angetpol"
-}
+LP page yang di-serve adalah **HTML shell sederhana** yang:
+- Load JPG dari R2 sebagai hero image
+- Render form order di atasnya (JS-driven)
+- Handle ongkir calculation client-side (call ke GAS atau direct ke RajaOngkir)
 
-if (slug && slug !== "admin") {
-  html = await KV.get(`lp:${slug}:html`)
-  return new Response(html, { headers: { "Content-Type": "text/html" } })
-}
+### 2. Storage
+
+#### Cloudflare R2 — JPG Files
+```
+r2://herbahero-media/
+  lp/angetpol.jpg
+  lp/produk-b.jpg
+  lp/jamu-tetes.jpg
 ```
 
-### 2. Cloudflare KV — Data Store
+Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
 
-| Key Pattern | Value | Keterangan |
+#### Cloudflare KV — Config & Routing
+
+| Key | Value | Keterangan |
 |---|---|---|
-| `lp:{slug}:html` | string (full HTML) | Konten LP |
-| `lp:{slug}:cfg` | JSON | Metadata LP |
-| `lp:{slug}:stats` | JSON | Stats ringan (views, ctaClicks) |
-| `domain:{domain}` | string | Maps domain → slug |
-| `slugs:index` | JSON array | List semua slug aktif |
-| `config:global` | JSON | Global business settings |
+| `lp:{slug}:cfg` | JSON | Config per LP |
+| `domain:{domain}` | string | Custom domain → slug |
+| `slugs:index` | JSON array | List semua slug |
+| `config:global` | JSON | Global settings (gudang, API key, dll) |
 
-**LP Config JSON Schema:**
+#### LP Config JSON Schema
+
 ```json
 {
   "slug": "angetpol",
-  "title": "Anget Pol — Jamu Herbal",
+  "productName": "Anget Pol Jamu Herbal",
   "status": "active",
   "customDomain": "angetpol.com",
-  "createdAt": "2026-03-11T00:00:00Z",
-  "updatedAt": "2026-03-11T00:00:00Z",
+  "jpgUrl": "https://media.herbahero.my.id/lp/angetpol.jpg",
+  "packages": [
+    { "label": "1 Botol", "qty": 1, "price": 85000 },
+    { "label": "3 Botol HEMAT", "qty": 3, "price": 220000 }
+  ],
+  "payment": {
+    "method": "manual",
+    "bankName": "BCA",
+    "accountNumber": "1234567890",
+    "accountName": "PT Herbahero"
+  },
   "gasWebhookUrl": "https://script.google.com/...",
-  "template": "herbal"
+  "fbPixelId": "123456789",
+  "capiToken": "...",
+  "waNumber": "6281234567890",
+  "createdAt": "2026-03-11T00:00:00Z",
+  "updatedAt": "2026-03-11T00:00:00Z"
 }
 ```
 
-### 3. Admin Dashboard — Single Page App
-**Path:** `/admin/` (served by Worker, static files di Cloudflare Pages atau KV)
+#### Global Settings JSON Schema
 
-Pages:
-- `/admin/` — Dashboard utama (stats, recent orders)
-- `/admin/slugs` — List & manage semua slug
-- `/admin/slugs/new` — Buat LP baru via visual builder
-- `/admin/slugs/:slug/edit` — Edit LP via visual builder
-- `/admin/domains` — Custom domain management
-- `/admin/settings` — Global settings (CF token, GAS URL, FB Pixel, dll)
-- `/admin/analytics` — Analytics per slug
-- `/admin/media` — Media library
-
-Admin berkomunikasi langsung ke Cloudflare API untuk update KV.
-
-### 3a. Visual Builder — Detail (Opsi A, Confirmed)
-
-**Keputusan Roni:** Konten LP dibuat via **visual builder di dalam dashboard** — bukan upload HTML, bukan template-only.
-
-**Flow:**
-```
-Admin buka /admin/slugs/new
-       ↓
-Isi form builder:
-  - Produk (nama, foto, harga, benefit, dll)
-  - Desain (warna, font, layout)
-  - Pengiriman (shipping config, fallback rates)
-  - Meta Ads (FB Pixel ID, CAPI token, WA number)
-       ↓
-Builder generate HTML dari template engine
-       ↓
-Simpan ke KV:
-  lp:{slug}:cfg  ← config JSON (editable)
-  lp:{slug}:html ← rendered HTML (serve-ready)
-       ↓
-Slug langsung aktif, bisa diakses
-```
-
-**Storage Strategy — Dual Write:**
-- `lp:{slug}:cfg` — config JSON (source of truth, bisa di-edit ulang)
-- `lp:{slug}:html` — rendered HTML (dipakai saat serve, hasil kompilasi cfg)
-
-Saat edit LP: update cfg → re-render → overwrite html. Ini memastikan serve tetap cepat (tinggal ambil HTML, tidak perlu render di-edge tiap request).
-
-**Builder Sections (berdasarkan lp-template.html existing):**
-| Section | Fields |
-|---|---|
-| Identitas Produk | Nama produk, tagline, deskripsi, foto hero |
-| Benefit | List poin benefit (dinamis, bisa tambah/hapus) |
-| Testimoni | Nama, foto, teks (dinamis) |
-| Produk & Harga | Pilihan paket (1 pcs / 2 pcs / 3 pcs), harga, harga coret |
-| Pengiriman | Shipping mode (API / fallback static), GAS webhook URL |
-| Meta Ads | FB Pixel ID, CAPI token, Test Event Code, UTM default |
-| Kontak | Nomor WA, template pesan WA |
-| SEO | Meta title, meta description, OG image |
-| Custom Code | Optional: inject JS/CSS tambahan |
-
-**LP Config JSON Schema (Extended):**
 ```json
 {
-  "slug": "angetpol",
-  "title": "Anget Pol — Jamu Herbal",
-  "status": "active",
-  "customDomain": "angetpol.com",
-  "template": "herbal",
-  "createdAt": "2026-03-11T00:00:00Z",
-  "updatedAt": "2026-03-11T00:00:00Z",
-  "content": {
-    "heroImage": "https://...",
-    "productName": "Anget Pol",
-    "tagline": "Jamu herbal untuk kesehatan",
-    "description": "...",
-    "benefits": ["Benefit 1", "Benefit 2"],
-    "testimonials": [
-      { "name": "Budi", "photo": "https://...", "text": "..." }
-    ],
-    "packages": [
-      { "qty": 1, "price": 85000, "strikePrice": 120000, "label": "1 Botol" },
-      { "qty": 3, "price": 220000, "strikePrice": 360000, "label": "3 Botol HEMAT" }
-    ]
+  "warehouseOrigin": {
+    "city": "Jakarta Selatan",
+    "cityId": "151",
+    "province": "DKI Jakarta"
   },
-  "meta": {
-    "fbPixelId": "123456789",
-    "capiToken": "...",
-    "testEventCode": "",
-    "waNumber": "6281234567890",
-    "waTemplate": "Halo, saya mau pesan {produk}..."
-  },
-  "shipping": {
-    "mode": "fallback",
-    "gasWebhookUrl": "https://script.google.com/...",
-    "fallbackRates": { "JNE": 15000, "J&T": 13000 }
-  },
-  "seo": {
-    "metaTitle": "Anget Pol — Beli Sekarang",
-    "metaDescription": "...",
-    "ogImage": "https://..."
-  }
+  "rajaOngkirKey": "saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP",
+  "rajaOngkirEndpoint": "https://rajaongkir.komerce.id",
+  "gasWebhookUrl": "https://script.google.com/...",
+  "fbPixelId": "",
+  "capiToken": "",
+  "adminToken": "..."
 }
-
-### 4. Internal API via Worker
-Worker expose endpoint `/api/*` untuk operasi yang butuh server-side:
-
-| Endpoint | Method | Fungsi |
-|---|---|---|
-| `/api/slugs` | GET | List semua slug |
-| `/api/slugs` | POST | Buat slug baru |
-| `/api/slugs/:slug` | PUT | Update konten/config LP |
-| `/api/slugs/:slug` | DELETE | Hapus LP |
-| `/api/domains` | GET/POST/DELETE | CRUD custom domain mapping |
-| `/api/stats/:slug` | GET | Stats untuk slug tertentu |
-
-API dilindungi dengan `Authorization: Bearer <admin_token>` yang disimpan di Worker Secrets.
-
-### 5. Google Apps Script (GAS) — Order Backend
-Tetap dipakai untuk:
-- Menerima order dari form LP
-- Menyimpan ke Google Sheets
-- Forward ke CAPI Facebook
-
-GAS URL di-store per LP di KV config (bisa global atau per slug).
-
----
-
-## Routing Flow Diagram
-
-```
-Request: angetpol.com/
-  │
-  ├─ Cloudflare DNS: angetpol.com CNAME → herbahero.my.id
-  ├─ Cloudflare Proxy: SSL terminate, forward ke Worker
-  │
-  ▼
-Worker: router.js
-  │
-  ├─ host = "angetpol.com" → bukan herbahero.my.id
-  ├─ KV.get("domain:angetpol.com") → "angetpol"
-  ├─ KV.get("lp:angetpol:cfg") → { status: "active", ... }
-  ├─ KV.get("lp:angetpol:html") → "<html>...</html>"
-  ├─ KV analytics increment: lp:angetpol:stats
-  └─ Response: 200 text/html
-
-Request: herbahero.my.id/produk-b
-  │
-  ▼
-Worker: router.js
-  │
-  ├─ host = "herbahero.my.id"
-  ├─ pathname = "/produk-b"
-  ├─ slug = "produk-b"
-  ├─ KV.get("lp:produk-b:html") → "<html>...</html>"
-  └─ Response: 200 text/html
-
-Request: herbahero.my.id/admin/
-  │
-  └─ Serve admin SPA (static dari KV atau Cloudflare Pages)
 ```
 
+### 3. LP Page — HTML Shell
+
+Bukan static HTML file. Worker generate HTML shell ini on-the-fly dari config:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{productName}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- FB Pixel snippet -->
+</head>
+<body>
+  <!-- LP = JPG image -->
+  <div id="lp-image">
+    <img src="{jpgUrl}" alt="{productName}">
+  </div>
+
+  <!-- Order form overlay -->
+  <div id="order-form">
+    <h2>Pesan Sekarang</h2>
+    <!-- Pilih paket -->
+    <!-- Form fields: nama, HP, alamat, kecamatan -->
+    <!-- Kalkulasi ongkir -->
+    <!-- Total & submit -->
+  </div>
+
+  <!-- Config injected by Worker -->
+  <script>
+    window.LP_CONFIG = {slug};  // inject JSON config
+  </script>
+  <script src="/static/lp-form.js"></script>
+</body>
+</html>
+```
+
+### 4. Shipping Calculation — RajaOngkir Komerce
+
+**Endpoint:** `https://rajaongkir.komerce.id`  
+**Key:** `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP`
+
+Flow:
+```
+Customer ketik kecamatan tujuan
+       ↓
+Search endpoint: GET /starter/destination?search={query}
+       ↓
+Customer pilih kecamatan dari dropdown
+       ↓
+Cost endpoint: POST /starter/cost
+  { origin: {warehouseOriginId}, destination: {destId}, weight: 1000 }
+       ↓
+Tampilkan opsi kurir + harga
+Customer pilih kurir
+       ↓
+Total = harga produk + ongkir
+```
+
+> **Catatan:** Key `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` sebelumnya test 401.
+> Perlu konfirmasi dari Roni apakah sudah aktif di dashboard RajaOngkir Komerce.
+> Jika belum aktif, fallback ke static rates dulu.
+
+### 5. Form Fields (TBD — menunggu konfirmasi Roni)
+
+Kandidat fields:
+- [ ] Nama lengkap *
+- [ ] Nomor HP/WA *
+- [ ] Alamat lengkap *
+- [ ] Kecamatan/kota tujuan * (dengan search dropdown → RajaOngkir)
+- [ ] Provinsi (auto-fill dari pilih kecamatan)
+- [ ] Kode pos (auto-fill)
+- [ ] Pilihan paket *
+- [ ] Pilihan kurir * (setelah ongkir dihitung)
+- [ ] Catatan (opsional)
+
+*= wajib
+
+### 6. Admin Dashboard — Simplified
+
+Pages yang dibutuhkan:
+- `/admin/` — List semua LP (slug, status, order count)
+- `/admin/slugs/new` — Form buat LP baru: nama, upload JPG, set paket harga, payment
+- `/admin/slugs/:slug/edit` — Edit config LP, ganti JPG
+- `/admin/domains` — Custom domain management
+- `/admin/settings` — Global: gudang asal, RajaOngkir key, GAS URL, FB Pixel
+- `/admin/analytics` — Stats per slug (pageview, order, conversion)
+
+**Jauh lebih sederhana dari proposal v1** — tidak ada builder, tidak ada template selector.
+
+### 7. Google Apps Script (GAS) — Order Backend
+
+Tetap sama:
+- Terima POST dari form
+- Simpan ke Google Sheets (1 sheet per slug atau semua di 1 sheet)
+- Fire FB CAPI event
+
 ---
 
-## Custom Domain Setup Flow (User Perspective)
+## Routing Flow
 
-1. User buat LP di admin dashboard, tentukan slug misal `angetpol`
-2. User punya domain `angetpol.com`
-3. Di admin → Domains → tambah: `angetpol.com` → slug `angetpol`
-4. System simpan `domain:angetpol.com = "angetpol"` ke KV
-5. Admin tampilkan instruksi DNS:
-   ```
-   Type: CNAME
-   Name: @ (atau www)
-   Value: herbahero.my.id
-   Proxy: ON (Cloudflare proxy)
-   ```
-6. User set DNS di registrar mereka
-7. Cloudflare otomatis issue SSL (karena domain masuk ke Cloudflare zone via proxy)
-8. Done — `https://angetpol.com` serve LP
-
-> **Catatan:** Domain harus di-proxy melalui Cloudflare (orange cloud). Domain yang tidak di Cloudflare bisa di-CNAME tapi SSL manual (perlu sertifikat terpisah atau Cloudflare for SaaS).
+```
+herbahero.my.id/angetpol
+       ↓
+Worker: slug = "angetpol"
+KV.get("lp:angetpol:cfg") → config JSON
+KV.get("config:global") → global settings
+       ↓
+Worker generate HTML shell dengan config injected
+       ↓
+Browser load JPG dari R2
+JS render form order
+Customer isi form → kalkulasi ongkir → submit
+```
 
 ---
 
-## Keputusan Storage: Kenapa KV, Bukan GitHub?
+## Apa yang TIDAK Dibangun
 
-| Aspek | GitHub JSON | Cloudflare KV |
-|---|---|---|
-| Latency | Tinggi (API + Git) | Sangat rendah (edge) |
-| Rate limit | 5000 req/jam | 100K+ req/hari (free) |
-| Operasi | Async, butuh commit | Langsung put/get |
-| Custom domain routing | Tidak bisa di-edge | Native di Worker |
-| Biaya | Gratis | Free tier cukup |
-| Realtime update | Tidak (butuh re-deploy) | Ya, instant |
-
-**Kesimpulan: Cloudflare KV adalah pilihan tepat untuk platform ini.**
-
----
-
-## Migrasi dari Arsitektur Lama
-
-LP yang sudah ada di GitHub (sebagai `.html` files) bisa dimigrate:
-1. Script fetch semua file dari GitHub repo
-2. Parse slug dari nama file
-3. Push HTML ke KV `lp:{slug}:html`
-4. Buat config JSON di KV `lp:{slug}:cfg`
-5. Update `slugs:index`
-6. Optional: redirect GitHub Pages ke platform baru
-
----
-
-## Security
-
-- Admin API dilindungi Bearer token (Worker Secret)
-- Token disimpan di `localStorage` di browser admin (acceptable untuk single-user)
-- LP content di KV tidak memerlukan auth (public read)
-- CORS hanya untuk `/api/*` endpoints
-- Rate limiting bisa ditambahkan via Cloudflare Rate Limiting rules
-
----
-
-## Implementation Roadmap (Urutan Prioritas)
-
-### Phase 1: Core Infrastructure
-- [ ] Setup Cloudflare Worker + KV namespace
-- [ ] Implement router.js dengan slug routing + custom domain routing
-- [ ] API endpoints CRUD untuk slugs
-- [ ] Test end-to-end: buat slug → akses via URL
-
-### Phase 2: Admin Dashboard + Visual Builder
-- [ ] Slug list page (dengan status, custom domain, stats)
-- [ ] **Visual builder** — form sections per blok konten, preview realtime
-- [ ] Builder output: save cfg JSON + rendered HTML ke KV
-- [ ] Edit LP: load cfg dari KV → tampil di builder form → save ulang
-- [ ] Custom domain management UI + DNS instructions
-- [ ] Settings (admin token, GAS URL, FB Pixel global)
-
-### Phase 3: Migration & Analytics
-- [ ] Migration tool dari GitHub Pages ke KV
-- [ ] Analytics per slug (pageview, CTA click, conversion)
-- [ ] Media library (tetap bisa di GitHub atau Cloudflare R2)
-
-### Phase 4: Nice to Have
-- [ ] Cloudflare for SaaS (untuk domain yang tidak di Cloudflare)
-- [ ] A/B testing per slug
-- [ ] Multi-user admin access
+| Fitur | Status |
+|---|---|
+| Visual HTML builder | ❌ Tidak perlu |
+| Template library | ❌ Tidak perlu |
+| Media Library (full) | ❌ Diganti simple JPG upload per slug |
+| Drag-drop LP editor | ❌ Tidak perlu |
 
 ---
 
 ## Open Questions untuk Roni
 
-1. **CF Account**: Apakah Roni punya Cloudflare account dengan herbahero.my.id sudah masuk zone? KV Workers perlu di-setup di sana.
-2. ~~**Builder**: Builder tetap mau dipakai (visual drag-drop) atau cukup raw HTML editor?~~ → **ANSWERED: Visual builder ✅**
-3. **Media**: Tetap di GitHub repo atau pindah ke Cloudflare R2 (lebih proper)?
-4. **GAS**: Satu GAS webhook global atau masing-masing LP bisa punya webhook berbeda?
+1. **Cloudflare zone** — herbahero.my.id sudah masuk zone CF dengan Worker plan? Ini blocker untuk deploy.
+
+2. **Payment method** — otomatis via gateway (Midtrans/Xendit/dll) atau manual (instruksi transfer ke rekening)? Kalau gateway, integrasi payment link perlu ditambah.
+
+3. **Form fields** — konfirmasi fields yang dibutuhkan (lihat kandidat di atas).
+
+4. **RajaOngkir key** — apakah `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` sudah aktif di dashboard komerce.id? Test sebelumnya 401.
+
+5. **GAS** — satu webhook URL global untuk semua LP, atau masing-masing LP bisa override?
 
 ---
 
 ## Changelog
 
-| Tanggal | Perubahan |
-|---|---|
-| 2026-03-11 | Initial proposal |
-| 2026-03-11 | Tambah detail Visual Builder (Opsi A confirmed by Roni) |
+| Tanggal | Versi | Perubahan |
+|---|---|---|
+| 2026-03-11 | v1 | Initial proposal (CF Worker + KV, visual builder) |
+| 2026-03-11 | v1.1 | Visual builder confirmed (Opsi A) |
+| 2026-03-11 | v2 | **MAJOR REVISION** — JPG upload + overlay form, tidak ada HTML builder |
 
 ---
 
-*Document ini adalah proposal awal. Mulai coding setelah semua open questions dijawab.*
+*Mulai coding Phase 1 setelah open questions 1–3 dijawab.*
