@@ -292,18 +292,42 @@ const capi  = slug_cfg.capiToken  || global_cfg.analytics.capiToken
 ## Routing Flow
 
 ```
-herbahero.my.id/angetpol
+herbahero.my.id/angetpol  OR  angetpol.com
        ↓
-Worker: slug = "angetpol"
-KV.get("lp:angetpol:cfg") → config JSON
+Worker checks: request.hostname
+  - herbahero.my.id → slug = pathname.split('/')[1]
+  - custom domain → KV.get("domain:{hostname}") → slug
+       ↓
+KV.get("lp:{slug}:cfg") → config JSON
 KV.get("config:global") → global settings
        ↓
 Worker generate HTML shell dengan config injected
        ↓
-Browser load JPG dari R2
+Browser load JPG dari R2/CDN
 JS render form order
 Customer isi form → kalkulasi ongkir → submit
 ```
+
+### Custom Domain Auto-Configure Flow
+
+```
+Admin input: customDomain = "angetpol.com"
+       ↓
+Platform hit Cloudflare API:
+  POST /zones/{zone_id}/custom_hostnames
+  { hostname: "angetpol.com", ssl: { method: "http", type: "dv" } }
+       ↓
+KV.put("domain:angetpol.com", "angetpol")
+       ↓
+Platform tampilkan instruksi DNS ke admin:
+  "Set CNAME: angetpol.com → herbahero.my.id"
+  "Tunggu SSL provisioning Cloudflare (beberapa menit)"
+       ↓
+Cloudflare auto-SSL, Worker auto-route custom domain
+```
+
+> **CF API Token needed:** Zone:Read + Zone:Edit (Custom Hostnames) + Workers Routes.
+> Generate dari CF dashboard → My Profile → API Tokens → Create Token.
 
 ---
 
@@ -326,12 +350,16 @@ Customer isi form → kalkulasi ongkir → submit
 - Analytics: global GAS backend, per-LP override pixel ✅
 - Payment: manual only — bank transfer atau COD per slug ✅
 - Ongkir: RajaOngkir Komerce API, key `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` ✅
+- CF zone: herbahero.my.id sudah di Cloudflare ✅ — Phase 1 bisa jalan
+- Custom domain: auto-configure via CF API — platform otomatis add custom hostname ke Worker, kasih instruksi DNS ke admin ✅
 
 **Masih pending ⏳**
 
-1. **Cloudflare zone** — herbahero.my.id sudah masuk zone CF dengan Worker plan? Ini blocker untuk deploy.
+1. **JPG Storage** — Cloudflare R2 atau cukup simpan URL eksternal (upload ke CDN sendiri, platform simpan URL-nya)?
 
-2. **JPG Storage** — Cloudflare R2 atau cukup simpan URL eksternal (upload ke CDN sendiri, platform simpan URL-nya)?
+2. **RajaOngkir key** — Key `saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP` endpoint sudah benar (`https://rajaongkir.komerce.id/api/v1/`), tapi key belum terdaftar di sistem mereka ("Invalid Api key, key not found"). Roni perlu aktivasi key dari dashboard `collaborator.komerce.id`. Sementara itu, platform pakai fallback static rates.
+
+3. **CF API Token** — Perlu token dengan permission `Zone:Edit` + `Workers Routes` untuk auto-configure custom domain. Roni generate dari CF dashboard.
 
 ---
 
@@ -344,7 +372,8 @@ Customer isi form → kalkulasi ongkir → submit
 | 2026-03-11 | v2 | **MAJOR REVISION** — JPG upload + overlay form, tidak ada HTML builder |
 | 2026-03-11 | v2.1 | Per-slug warehouse override, bersihkan sisa v1, analytics schema dirapikan |
 | 2026-03-11 | v2.2 | Payment confirmed (manual: bank transfer/COD), form fields confirmed (4 fields) |
+| 2026-03-11 | v2.3 | CF zone confirmed, custom domain auto-configure flow via CF API, RajaOngkir key diagnosis |
 
 ---
 
-*Mulai coding Phase 1 setelah open questions 1–3 dijawab.*
+**Phase 1 coding dimulai. ⚙️**
