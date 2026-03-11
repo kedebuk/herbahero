@@ -155,6 +155,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="card">
+    <div class="card-head">🏢 Identitas Bisnis</div>
+    <div class="card-body">
+      <div class="info-box">
+        Pengaturan identitas bisnis. Dipakai sebagai default di Builder saat membuat LP baru, dan disimpan ke <code>_config/global.json</code> di GitHub.
+      </div>
+      <br>
+      <div class="fg">
+        <label>Nama Bisnis</label>
+        <input type="text" id="bizName" placeholder="Herbahero">
+      </div>
+      <div class="fg">
+        <label>Tagline</label>
+        <input type="text" id="bizTagline" placeholder="Solusi kesehatan herbal terpercaya">
+      </div>
+      <div class="fg">
+        <label>Logo URL</label>
+        <input type="text" id="bizLogoUrl" placeholder="https://example.com/logo.png">
+        <img id="bizLogoPreview" src="" alt="" style="max-height:40px;margin-top:6px;display:none;border-radius:4px">
+      </div>
+      <div class="fg">
+        <label>Warna Brand Utama</label>
+        <input type="color" id="bizColorPrimary" value="#2563eb" style="height:36px;padding:2px;cursor:pointer">
+      </div>
+      <div class="fg">
+        <label>Warna Brand Sekunder</label>
+        <input type="color" id="bizColorSecondary" value="#16a34a" style="height:36px;padding:2px;cursor:pointer">
+      </div>
+      <div class="fg">
+        <label>Nomor WA Default</label>
+        <input type="tel" id="bizWaDefault" placeholder="6285270404312">
+        <div class="hint">Dipakai otomatis di LP baru via Builder.</div>
+      </div>
+      <div class="fg">
+        <label>Email Bisnis</label>
+        <input type="email" id="bizEmail" placeholder="hello@herbahero.com">
+      </div>
+      <div id="bizStatusMsg" class="status"></div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btnBizSave" style="background:#16a34a">💾 Simpan & Push ke GitHub</button>
+      </div>
+      <div id="bizSavedBadge" class="saved-badge" style="margin-top:10px">✅ Identitas bisnis tersimpan</div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-head">🔗 Quick Links</div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
       <a href="/admin/pages.html" style="color:#2563eb;text-decoration:none;font-size:.9rem">→ LP Manager</a>
@@ -309,6 +354,83 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   function showFB(type, msg) {
     var s = el('fbStatusMsg');
     s.className = 'status' + (type ? ' on ' + type : '');
+    s.textContent = msg;
+  }
+
+  /* ── Identitas Bisnis ── */
+  var bizFields = ['bizName','bizTagline','bizLogoUrl','bizColorPrimary','bizColorSecondary','bizWaDefault','bizEmail'];
+  bizFields.forEach(function(id){
+    var v = localStorage.getItem('biz_'+id);
+    if(v) el(id).value = v;
+  });
+  // Logo preview
+  var logoInp = el('bizLogoUrl');
+  var logoPrev = el('bizLogoPreview');
+  function updateLogoPreview(){
+    var u=logoInp.value.trim();
+    if(u){logoPrev.src=u;logoPrev.style.display='block';}
+    else{logoPrev.style.display='none';}
+  }
+  logoInp.addEventListener('input', updateLogoPreview);
+  updateLogoPreview();
+
+  el('btnBizSave').addEventListener('click', function(){
+    var data = {};
+    bizFields.forEach(function(id){
+      var v = el(id).value.trim();
+      localStorage.setItem('biz_'+id, v);
+      data[id] = v;
+    });
+
+    // Build global.json
+    var globalJson = JSON.stringify({
+      bizName: data.bizName||'',
+      bizTagline: data.bizTagline||'',
+      logoUrl: data.bizLogoUrl||'',
+      colorPrimary: data.bizColorPrimary||'',
+      colorSecondary: data.bizColorSecondary||'',
+      waDefault: data.bizWaDefault||'',
+      email: data.bizEmail||''
+    }, null, 2);
+
+    var token = localStorage.getItem(ST.TOKEN);
+    if(!token){
+      showBiz('er','❌ GitHub token belum diset.');
+      return;
+    }
+
+    showBiz('','⏳ Menyimpan ke GitHub...');
+    el('btnBizSave').disabled = true;
+
+    var ghB = 'https://api.github.com/repos/'+o+'/'+r+'/contents/';
+    var headers = {'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'};
+    var path = '_config/global.json';
+
+    // Get existing SHA
+    fetch(ghB+path, {headers:headers})
+    .then(function(resp){ return resp.ok?resp.json():{sha:null}; })
+    .then(function(d){
+      var body = { message:'Update global business settings', content:btoa(unescape(encodeURIComponent(globalJson))) };
+      if(d.sha) body.sha = d.sha;
+      return fetch(ghB+path, {method:'PUT',headers:headers,body:JSON.stringify(body)});
+    })
+    .then(function(resp){
+      if(!resp.ok) return resp.json().then(function(e){ throw new Error(e.message||resp.status); });
+      el('bizSavedBadge').classList.add('on');
+      showBiz('ok','✅ Identitas bisnis tersimpan & di-push ke GitHub.');
+      setTimeout(function(){ el('bizSavedBadge').classList.remove('on'); }, 3000);
+    })
+    .catch(function(err){
+      showBiz('er','❌ Gagal push: '+err.message);
+    })
+    .finally(function(){
+      el('btnBizSave').disabled = false;
+    });
+  });
+
+  function showBiz(type, msg){
+    var s = el('bizStatusMsg');
+    s.className = 'status'+(type?' on '+type:'');
     s.textContent = msg;
   }
 

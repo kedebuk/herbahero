@@ -376,6 +376,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   if (!gv('bWebhook'))   { var _wh = localStorage.getItem('gas_webhook_url'); if (_wh) el('bWebhook').value = _wh; }
   if (!gv('bWaNumber'))  { var _wa = localStorage.getItem('default_wa_number'); if (_wa) el('bWaNumber').value = _wa; }
 
+  /* Auto-fill from Global Business Settings (biz_ keys) — only if still empty */
+  if (!gv('bWaNumber'))  { var _bwa = localStorage.getItem('biz_bizWaDefault');    if (_bwa) el('bWaNumber').value = _bwa; }
+  if (!gv('bColor') || gv('bColor')==='#2563eb') { var _bcl = localStorage.getItem('biz_bizColorPrimary'); if (_bcl) el('bColor').value = _bcl; }
+
   /* ── LP Identity ── */
   el('bLpName').addEventListener('input', function () {
     /* Auto-fill slug only if user hasn't manually edited it, or slug is empty */
