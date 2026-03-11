@@ -99,6 +99,27 @@ function sendCAPI(d, orderId) {
 function doPost(e) {
   try {
     var d = JSON.parse(e.postData.contents);
+
+    /* ── Analytics tracking ── */
+    if (d.action === 'track') {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var trackSheet = ss.getSheetByName('Analytics') || ss.insertSheet('Analytics');
+      if (trackSheet.getLastRow() === 0) {
+        trackSheet.appendRow(['Timestamp','LP Slug','Event','User Agent','Referrer','Session ID','Value']);
+        trackSheet.getRange('A1:G1').setFontWeight('bold');
+      }
+      trackSheet.appendRow([
+        new Date().toISOString(),
+        d.slug || '',
+        d.event || '',
+        d.ua || '',
+        d.ref || '',
+        d.sessionId || '',
+        d.value || ''
+      ]);
+      return json({ ok: true });
+    }
+
     var sh = getSheet();
     var id = genId();
     var ts = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
@@ -175,6 +196,24 @@ function doGet(e) {
         stats[status] = (stats[status] || 0) + 1;
       }
       return json({ success: true, stats: stats, totalOrders: data.length - 1 });
+    }
+    if (action === 'analytics_data') {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var trackSheet = ss.getSheetByName('Analytics');
+      if (!trackSheet || trackSheet.getLastRow() <= 1) {
+        return json({ data: [] });
+      }
+      var rows = trackSheet.getRange(2, 1, trackSheet.getLastRow() - 1, 7).getValues();
+      var agg = {};
+      rows.forEach(function(r) {
+        var slug = r[1], event = r[2];
+        if (!slug) return;
+        if (!agg[slug]) agg[slug] = { slug: slug, views: 0, cta_clicks: 0, form_submissions: 0 };
+        if (event === 'pageview') agg[slug].views++;
+        else if (event === 'cta_click') agg[slug].cta_clicks++;
+        else if (event === 'form_submit') agg[slug].form_submissions++;
+      });
+      return json({ data: Object.keys(agg).map(function(k) { return agg[k]; }) });
     }
     return json({ success: false, error: 'Unknown action' });
   } catch (err) {

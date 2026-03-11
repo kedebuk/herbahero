@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics LP — Herbahero</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.topbar h1{font-size:1.05rem;font-weight:700;white-space:nowrap}
+.back-link{color:#6b7280;text-decoration:none;font-size:.85rem;white-space:nowrap}
+.back-link:hover{color:#111}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn-icon{padding:7px 10px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;font-size:.85rem;cursor:pointer}
+.btn-icon:hover{background:#e5e7eb;color:#374151}
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:20px}
+.card-head{padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card-head h2{font-size:.95rem;font-weight:700}
+
+.load-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:end}
+.load-row .fg{flex:1;min-width:250px}
+.load-row .fg label{display:block;font-size:.82rem;font-weight:600;color:#374151;margin-bottom:4px}
+.load-row .fg input{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.88rem}
+.load-row .fg input:focus{outline:none;border-color:#2563eb}
+.btn-load{padding:9px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;height:38px}
+.btn-load:hover{background:#1d4ed8}
+.btn-load:disabled{background:#93c5fd;cursor:not-allowed}
+.btn-export{padding:9px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;height:38px}
+.btn-export:hover{background:#15803d}
+
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:.78rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
+td{padding:12px 14px;border-bottom:1px solid #f3f4f6;font-size:.88rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.slug-link{color:#2563eb;text-decoration:none;font-weight:600}
+.slug-link:hover{text-decoration:underline}
+.cr-good{color:#16a34a;font-weight:700}
+.cr-mid{color:#f59e0b;font-weight:700}
+.cr-low{color:#dc2626;font-weight:700}
+
+.empty-state{padding:48px 24px;text-align:center;color:#9ca3af}
+.empty-state h3{font-size:1rem;color:#6b7280;margin-bottom:8px}
+.empty-state p{font-size:.88rem}
+.last-updated{font-size:.78rem;color:#9ca3af;margin-top:12px;text-align:right}
+
+.toast{position:fixed;bottom:20px;right:20px;background:#1f2937;color:#fff;padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:999;display:none;max-width:320px}
+.toast.on{display:block}
+.toast.ok{background:#16a34a}
+.toast.er{background:#dc2626}
+
+@media(max-width:640px){
+  th:nth-child(3),td:nth-child(3){display:none}
+  .load-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="../" class="back-link">&larr; Hub</a>
+    <h1>📊 Analytics LP</h1>
+  </div>
+  <div class="topbar-right">
+    <a href="/admin/pages.html" class="btn-icon">📄 LP Manager</a>
+    <a href="/admin/settings.html" class="btn-icon" title="Settings">⚙️</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="load-row">
+    <div class="fg">
+      <label>GAS Webhook URL</label>
+      <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <button class="btn-load" id="btnLoad">🔄 Muat Data</button>
+    <button class="btn-export" id="btnExport">📥 Export CSV</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Data Analytics per LP</h2>
+    </div>
+    <div id="tableContainer">
+      <div class="empty-state">
+        <h3>Belum ada data</h3>
+        <p>Masukkan GAS Webhook URL lalu klik "Muat Data" untuk melihat analytics.</p>
+      </div>
+    </div>
+  </div>
+  <div class="last-updated" id="lastUpdated"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var gasUrl = document.getElementById('gasUrl');
+  var savedUrl = localStorage.getItem('gas_webhook_url') || '';
+  if(savedUrl) gasUrl.value = savedUrl;
+
+  var analyticsData = [];
+
+  document.getElementById('btnLoad').addEventListener('click', loadData);
+  document.getElementById('btnExport').addEventListener('click', exportCSV);
+
+  function loadData(){
+    var url = gasUrl.value.trim();
+    if(!url){ showToast('❌ Masukkan GAS Webhook URL dulu.','er'); return; }
+    localStorage.setItem('gas_webhook_url', url);
+
+    var btn = document.getElementById('btnLoad');
+    btn.disabled = true; btn.textContent = '⏳ Memuat...';
+    var container = document.getElementById('tableContainer');
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af">⏳ Memuat data analytics...</div>';
+
+    fetch(url+'?action=analytics_data')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      analyticsData = (d.data || []).sort(function(a,b){ return b.views - a.views; });
+      renderTable(analyticsData);
+      document.getElementById('lastUpdated').textContent = 'Terakhir dimuat: '+new Date().toLocaleString('id-ID');
+    })
+    .catch(function(err){
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:#dc2626">❌ Gagal memuat: '+err.message+'</div>';
+    })
+    .finally(function(){
+      btn.disabled = false; btn.textContent = '🔄 Muat Data';
+    });
+  }
+
+  function renderTable(data){
+    var container = document.getElementById('tableContainer');
+    if(!data.length){
+      container.innerHTML = '<div class="empty-state"><h3>Belum ada data</h3><p>Belum ada event analytics yang tercatat di spreadsheet.</p></div>';
+      return;
+    }
+
+    var owner = localStorage.getItem('gh_owner')||'kedebuk';
+    var repo = localStorage.getItem('gh_repo')||'herbahero';
+
+    var h = '<table><thead><tr><th>Slug LP</th><th>Views</th><th>CTA Clicks</th><th>Form Submissions</th><th>Conversion Rate</th></tr></thead><tbody>';
+    data.forEach(function(row){
+      var cr = row.views>0 ? (row.form_submissions/row.views*100) : 0;
+      var crClass = cr>=10?'cr-good':cr>=5?'cr-mid':'cr-low';
+      var lpUrl = 'https://'+owner+'.github.io/'+repo+'/'+row.slug;
+      h += '<tr>'
+        +'<td><a class="slug-link" href="'+esc(lpUrl)+'" target="_blank" rel="noopener">'+esc(row.slug)+' ↗</a></td>'
+        +'<td>'+row.views+'</td>'
+        +'<td>'+row.cta_clicks+'</td>'
+        +'<td>'+row.form_submissions+'</td>'
+        +'<td><span class="'+crClass+'">'+cr.toFixed(1)+'%</span></td>'
+        +'</tr>';
+    });
+    h += '</tbody></table>';
+    container.innerHTML = h;
+  }
+
+  function exportCSV(){
+    if(!analyticsData.length){ showToast('❌ Tidak ada data untuk di-export.','er'); return; }
+    var csv = 'Slug,Views,CTA Clicks,Form Submissions,Conversion Rate (%)\n';
+    analyticsData.forEach(function(row){
+      var cr = row.views>0 ? (row.form_submissions/row.views*100).toFixed(1) : '0.0';
+      csv += '"'+row.slug+'",'+row.views+','+row.cta_clicks+','+row.form_submissions+','+cr+'\n';
+    });
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'analytics_'+new Date().toISOString().slice(0,10)+'.csv';
+    link.click();
+    showToast('✅ CSV berhasil di-download!','ok');
+  }
+
+  function showToast(msg, type){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast on'+(type?' '+type:'');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ t.className='toast'; }, 4000);
+  }
+
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script>
+</body>
+</html>

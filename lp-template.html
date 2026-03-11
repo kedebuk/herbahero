@@ -95,6 +95,34 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
   });
 })();
 </script>
+<script>
+(function(){
+  var _gasUrl = typeof LP_CONFIG !== "undefined" && LP_CONFIG.webhookUrl ? LP_CONFIG.webhookUrl : "";
+  var _slug = window.location.pathname.split("/").pop().replace(".html","") || "unknown";
+  var _sid = sessionStorage.getItem("_sid") || (function(){var s=Math.random().toString(36).substr(2,9);sessionStorage.setItem("_sid",s);return s;})();
+
+  function _track(event, value) {
+    if(!_gasUrl) return;
+    var payload = {action:"track", slug:_slug, event:event, ua:navigator.userAgent, ref:document.referrer, sessionId:_sid, value:value||""};
+    navigator.sendBeacon ? navigator.sendBeacon(_gasUrl, JSON.stringify(payload))
+      : fetch(_gasUrl, {method:"POST", mode:"no-cors", body:JSON.stringify(payload)}).catch(function(){});
+  }
+
+  // pageview on load
+  _track("pageview");
+
+  // CTA clicks
+  document.addEventListener("click", function(e){
+    var t = e.target;
+    if(t.classList.contains("btn-next") || t.classList.contains("btn-order") || t.id==="submitBtn" || t.closest("#submitBtn")) {
+      _track("cta_click");
+    }
+  });
+
+  // Expose for form submit tracking
+  window._track = _track;
+})();
+</script>
 <style>
 .sticky-cta{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:none}
 .sticky-cta a{background:var(--c);color:#fff;padding:14px 32px;border-radius:999px;font-weight:700;font-size:1rem;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25);display:block;text-align:center}
@@ -641,6 +669,7 @@ if(LP_CONFIG.pixelId&&LP_CONFIG.pixelId!=='XXXXXXXXXXXXXXX'){
       successMsg.classList.add('show');
       document.getElementById('waLink').innerHTML='<a href="'+buildWaLink(data.nama)+'" target="_blank">📱 Chat CS via WhatsApp</a>';
       if(typeof fbq==='function'&&C.pixelId!=='XXXXXXXXXXXXXXX'){fbq('track','Purchase',{value:total,currency:'IDR'},{eventID:eventId});}
+      if(typeof window._track==="function") window._track("form_submit", total);
       e.target.reset(); goStep(1);
     })
     .catch(function(){
