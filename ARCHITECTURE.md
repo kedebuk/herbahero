@@ -115,6 +115,12 @@ Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
 }
 ```
 
+> **Pixel inheritance rule:** `fbPixelId` dan `capiToken` di per-slug config bersifat **opsional**.
+> Worker resolve pixel dengan urutan: `slug.fbPixelId` → `global.fbPixelId`.
+> Kalau slug tidak set → pakai global default. Ini memungkinkan satu akun pixel untuk semua LP,
+> atau override per-produk kalau ada BM/pixel terpisah.
+```
+
 #### Global Settings JSON Schema
 
 ```json
@@ -127,10 +133,16 @@ Public URL: `https://media.herbahero.my.id/lp/{slug}.jpg`
   "rajaOngkirKey": "saFoHFPsoPBkJdQbZyDVOvAvVFKYYEpP",
   "rajaOngkirEndpoint": "https://rajaongkir.komerce.id",
   "gasWebhookUrl": "https://script.google.com/...",
-  "fbPixelId": "",
-  "capiToken": "",
+  "analytics": {
+    "fbPixelId": "9876543210",
+    "capiToken": "EAAxxxxxxx"
+  },
   "adminToken": "..."
 }
+```
+
+> **Global analytics** adalah satu backend GAS + satu FB Pixel default yang dipakai semua LP.
+> Per-slug bisa override `fbPixelId` / `capiToken` jika LP tersebut punya BM/pixel sendiri.
 ```
 
 ### 3. LP Page — HTML Shell
@@ -228,6 +240,39 @@ Tetap sama:
 - Terima POST dari form
 - Simpan ke Google Sheets (1 sheet per slug atau semua di 1 sheet)
 - Fire FB CAPI event
+
+### 8. Analytics — Global Infrastructure, Per-LP Pixel
+
+**Prinsip:**
+- Satu GAS backend untuk semua LP (global analytics endpoint)
+- FB Pixel: global default, bisa di-override per slug
+
+**Pixel Resolution Logic (di Worker saat generate HTML shell):**
+```javascript
+const pixel = slug_cfg.fbPixelId || global_cfg.analytics.fbPixelId
+const capi  = slug_cfg.capiToken  || global_cfg.analytics.capiToken
+// Inject ke HTML shell
+```
+
+**Use cases:**
+| Skenario | Config |
+|---|---|
+| Semua LP pakai 1 pixel | Isi global pixel, slug tidak perlu set |
+| LP A pakai pixel BM sendiri | Set `fbPixelId` di slug A config, slug lain tetap global |
+| Test event code per LP | Set `testEventCode` opsional di slug config |
+
+**Per-slug analytics fields (semua opsional):**
+```json
+{
+  "fbPixelId": "123456789",
+  "capiToken": "EAAxxxxxxx",
+  "testEventCode": "TEST12345"
+}
+```
+
+**Admin dashboard `/admin/analytics`:**
+- Stats per slug: pageview, CTA click, order, conversion rate
+- Semua data masuk ke 1 GAS backend, difilter by `slug` parameter
 
 ---
 
