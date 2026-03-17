@@ -367,125 +367,187 @@
 
   // ─── Fetch Couriers ─────────────────────────────────────────────────────
   // destCode: Lincah district code, e.g. "34.02.01"
-  function fetchCouriers(destCode) {
-    var courierContainer = qs('#cw-courier-list');
-    if (!courierContainer) return;
-
-    courierContainer.innerHTML = '<div class="cw-courier-loading"><span class="cw-spinner"></span> Mengambil ongkir...</div>';
-    state.selectedCourier = null;
-    state.couriers = [];
-    updateSummary();
-
-    // Graceful fallback if shippingApiUrl not set
-    if (!shippingApiUrl) {
-      courierContainer.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0">Layanan ongkir belum tersedia</p>';
-      return;
-    }
-
-    // POST /cost with flat format {originCode, destCode, weight}
-    var body = {
-      originCode: shippingOriginCode || shippingOrigin || '',
-      destCode: destCode,
-      weight: shippingWeight || 1,
-      packagePrice: state.selectedPkgPrice || prodPrice || 97000,
-      isPickup: false,
-      isCod: false,
-      logistics: ['JNE', 'SiCepat', 'J&T Express', 'ID Express', 'Ninja Xpress'],
-      services: ['Regular', 'Express']
-    };
-
-    // Ongkir can take 30-60s — show a helpful message after 5s
-    var slowTimer = setTimeout(function() {
-      var loadingEl = courierContainer.querySelector('.cw-courier-loading');
-      if (loadingEl) loadingEl.innerHTML = '<span class="cw-spinner"></span> Mencari kurir... (bisa 30-60 detik)';
-    }, 5000);
-
-    fetch(shippingApiUrl + '/cost', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    .then(function(r) {
-      clearTimeout(slowTimer);
-      return r.json();
-    })
-    .then(function(data) {
-      // Lincah response: {success, data: [{code, name, costs:[{service, service_name, cost:{value, etd, est}, isCod}]}]}
-      var couriers = [];
-      var raw = [];
-
-      if (data && Array.isArray(data.data)) {
-        raw = data.data;
-      } else if (Array.isArray(data)) {
-        raw = data;
-      }
-
-      raw.forEach(function(item) {
-        // Lincah format: item.name = courier name, item.costs = [{service, service_name, cost:{value, etd}}]
-        if (item.costs && Array.isArray(item.costs)) {
-          item.costs.forEach(function(svc) {
-            var price = 0;
-            var etd = '';
-            if (svc.cost) {
-              price = svc.cost.value || 0;
-              etd = svc.cost.etd || '';
-            }
-            couriers.push({
-              code: item.code || '',
-              name: item.name || item.code || 'Kurir',
-              service: svc.service_name || svc.service || '',
-              price: price,
-              etd: etd
-            });
-          });
-        } else if (item.price !== undefined || item.cost !== undefined) {
-          // Flat format fallback
-          couriers.push({
-            code: item.code || '',
-            name: item.courier || item.courier_name || item.name || 'Kurir',
-            service: item.service || item.service_name || '',
-            price: item.price || item.cost || 0,
-            etd: item.etd || item.estimation || ''
-          });
-        }
-      });
-
-      state.couriers = couriers;
-
-      if (couriers.length === 0) {
-        courierContainer.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0">Tidak ada kurir tersedia untuk tujuan ini</p>';
-        return;
-      }
-
-      courierContainer.innerHTML = '';
-      couriers.forEach(function(c, idx) {
-        var card = document.createElement('div');
-        card.className = 'cw-radio-card';
-        card.setAttribute('data-c-idx', idx);
-        // Display: "JNE Express - REG Rp 9.000 (1-2 hari)"
-        var etdText = c.etd ? ' (' + c.etd + ' hari)' : '';
-        var titleText = c.name + (c.service ? ' - ' + c.service : '');
-        var detailText = fmt(c.price) + etdText;
-        card.innerHTML =
-          '<div class="cw-radio-dot"></div>'
-          + '<div class="cw-radio-info">'
-          +   '<div class="cw-radio-name">' + titleText + '</div>'
-          +   '<div class="cw-radio-detail">' + detailText + '</div>'
-          + '</div>'
-          + '<div class="cw-radio-price">' + fmt(c.price) + '</div>';
+  // Render courier cards into container
+  function renderCourierCards(courierContainer, couriers) {
+    courierContainer.innerHTML = '';
+    couriers.forEach(function(c, idx) {
+      var card = document.createElement('div');
+      card.className = 'cw-radio-card';
+      card.setAttribute('data-c-idx', idx);
+      var etdText = c.etd ? ' (' + c.etd + ' hari)' : '';
+      var titleText = c.name + (c.service ? ' - ' + c.service : '');
+      var priceText = c.price > 0 ? fmt(c.price) : 'Menghitung...';
+      var detailText = (c.price > 0 ? fmt(c.price) : '<span class="cw-spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle"></span> Menghitung ongkir...') + etdText;
+      card.innerHTML =
+        '<div class="cw-radio-dot"></div>'
+        + '<div class="cw-radio-info">'
+        +   '<div class="cw-radio-name">' + titleText + '</div>'
+        +   '<div class="cw-radio-detail">' + detailText + '</div>'
+        + '</div>'
+        + (c.price > 0 ? '<div class="cw-radio-price">' + fmt(c.price) + '</div>' : '');
+      if (c.price > 0) {
         card.addEventListener('click', function() {
           courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
           card.classList.add('cw-rc-active');
           state.selectedCourier = c;
           updateSummary();
         });
-        courierContainer.appendChild(card);
+      } else {
+        card.style.opacity = '0.7';
+        card.style.cursor = 'wait';
+      }
+      courierContainer.appendChild(card);
+    });
+  }
+
+  function fetchCouriers(destCode) {
+    var courierContainer = qs('#cw-courier-list');
+    if (!courierContainer) return;
+
+    courierContainer.innerHTML = '<div class="cw-courier-loading"><span class="cw-spinner"></span> Mengambil kurir tersedia...</div>';
+    state.selectedCourier = null;
+    state.couriers = [];
+    updateSummary();
+
+    if (!shippingApiUrl) {
+      courierContainer.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0">Layanan ongkir belum tersedia</p>';
+      return;
+    }
+
+    // Step 1: Fetch available couriers first (fast endpoint, <2s)
+    fetch(shippingApiUrl + '/couriers')
+    .then(function(r) { return r.json(); })
+    .then(function(courierData) {
+      var available = [];
+      if (courierData && courierData.success && Array.isArray(courierData.data)) {
+        courierData.data.forEach(function(c) {
+          if (c.isMain) {
+            available.push({
+              code: c.code || '',
+              name: c.name || c.code || 'Kurir',
+              service: 'Regular',
+              price: 0,
+              etd: '',
+              image: c.image || ''
+            });
+          }
+        });
+      }
+
+      // Show courier list immediately (without prices yet)
+      if (available.length > 0) {
+        state.couriers = available;
+        renderCourierCards(courierContainer, available);
+        // Add a note
+        var note = document.createElement('p');
+        note.style.cssText = 'color:#9ca3af;font-size:12px;text-align:center;padding:4px 0 8px;margin:0';
+        note.innerHTML = '<span class="cw-spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Menghitung ongkir ke kotamu... (30-60 detik)';
+        note.id = 'cw-cost-loading-note';
+        courierContainer.appendChild(note);
+      }
+
+      // Step 2: Fetch actual costs (slow endpoint, 30-60s)
+      var body = {
+        originCode: shippingOriginCode || shippingOrigin || '',
+        destCode: destCode,
+        weight: shippingWeight || 1,
+        packagePrice: state.selectedPkgPrice || prodPrice || 97000,
+        isPickup: false,
+        isCod: false,
+        logistics: available.map(function(c) { return c.name; }),
+        services: ['Regular', 'Express']
+      };
+
+      return fetch(shippingApiUrl + '/cost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var couriers = [];
+        var raw = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+
+        raw.forEach(function(item) {
+          if (item.costs && Array.isArray(item.costs)) {
+            item.costs.forEach(function(svc) {
+              var price = 0, etd = '';
+              if (svc.cost) { price = svc.cost.value || 0; etd = svc.cost.etd || ''; }
+              if (price > 0) {
+                couriers.push({
+                  code: item.code || '',
+                  name: item.name || item.code || 'Kurir',
+                  service: svc.service_name || svc.service || '',
+                  price: price,
+                  etd: etd
+                });
+              }
+            });
+          } else if (item.price !== undefined || item.cost !== undefined) {
+            couriers.push({
+              code: item.code || '',
+              name: item.courier || item.courier_name || item.name || 'Kurir',
+              service: item.service || item.service_name || '',
+              price: item.price || item.cost || 0,
+              etd: item.etd || item.estimation || ''
+            });
+          }
+        });
+
+        // Remove loading note
+        var loadNote = qs('#cw-cost-loading-note');
+        if (loadNote) loadNote.remove();
+
+        if (couriers.length > 0) {
+          // Sort by price ascending
+          couriers.sort(function(a, b) { return a.price - b.price; });
+          state.couriers = couriers;
+          renderCourierCards(courierContainer, couriers);
+        } else {
+          // Cost API failed but couriers are shown — show message
+          var failNote = document.createElement('p');
+          failNote.style.cssText = 'color:#f59e0b;font-size:12px;text-align:center;padding:4px 0 8px;margin:0';
+          failNote.innerHTML = 'Ongkir belum bisa dihitung otomatis. Pilih kurir, ongkir dikonfirmasi via WhatsApp.';
+          courierContainer.appendChild(failNote);
+          // Make courier cards clickable without price
+          state.couriers.forEach(function(c) { c.price = 0; });
+          courierContainer.querySelectorAll('.cw-radio-card').forEach(function(card) {
+            card.style.opacity = '1';
+            card.style.cursor = 'pointer';
+            var idx = parseInt(card.getAttribute('data-c-idx'));
+            card.addEventListener('click', function() {
+              courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
+              card.classList.add('cw-rc-active');
+              state.selectedCourier = state.couriers[idx] || null;
+              updateSummary();
+            });
+          });
+        }
+      })
+      .catch(function(costErr) {
+        console.error('[checkout] cost error:', costErr);
+        var loadNote = qs('#cw-cost-loading-note');
+        if (loadNote) {
+          loadNote.innerHTML = '⚠️ Ongkir belum bisa dihitung. Pilih kurir, ongkir dikonfirmasi via WhatsApp.';
+          loadNote.style.color = '#f59e0b';
+        }
+        // Make cards clickable without price
+        courierContainer.querySelectorAll('.cw-radio-card').forEach(function(card) {
+          card.style.opacity = '1';
+          card.style.cursor = 'pointer';
+          var idx = parseInt(card.getAttribute('data-c-idx'));
+          card.addEventListener('click', function() {
+            courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
+            card.classList.add('cw-rc-active');
+            state.selectedCourier = state.couriers[idx] || null;
+            updateSummary();
+          });
+        });
       });
     })
     .catch(function(err) {
-      clearTimeout(slowTimer);
-      console.error('[checkout] cost error:', err);
-      courierContainer.innerHTML = '<p style="color:#dc2626;font-size:13px;text-align:center;padding:12px 0">Gagal mengambil ongkir. Coba lagi.</p>';
+      console.error('[checkout] courier list error:', err);
+      courierContainer.innerHTML = '<p style="color:#dc2626;font-size:13px;text-align:center;padding:12px 0">Gagal mengambil daftar kurir. <a href="#" onclick="location.reload()" style="color:#2563eb;text-decoration:underline">Coba lagi</a></p>';
     });
   }
 
