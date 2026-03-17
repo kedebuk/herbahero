@@ -62,9 +62,11 @@
 
   var packageSelect = packages.length > 0
     ? '<div class="cw-group"><label>Pilih Paket</label>'
-      + '<select id="cw-pkg">' + packages.map(function(p,i){
-          return '<option value="'+p+'"'+(i===0?' selected':'')+'>'+p+'</option>';
-        }).join('') + '</select></div>'
+      + '<div class="cw-packages">' + packages.map(function(p,i){
+          return '<button type="button" class="cw-pkg-btn'+(i===0?' cw-pkg-active':'')+'" data-pkg="'+p+'" onclick="cwSelectPkg(this)">'+p+'</button>';
+        }).join('') + '</div>'
+      + '<input type="hidden" id="cw-pkg" value="'+(packages[0] || '')+'">'
+      + '</div>'
     : '';
 
   mount.innerHTML =
@@ -75,8 +77,12 @@
     + '.cw-sub{text-align:center;color:#6b7280;font-size:14px;margin-bottom:20px}'
     + '.cw-group{margin-bottom:14px}'
     + '.cw-group label{display:block;font-weight:600;font-size:14px;margin-bottom:5px;color:#374151}'
-    + '.cw-group input,.cw-group select{width:100%;padding:12px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:15px;transition:border-color .15s;outline:none}'
-    + '.cw-group input:focus,.cw-group select:focus{border-color:'+theme+'}'
+    + '.cw-group input{width:100%;padding:12px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:15px;transition:border-color .15s;outline:none}'
+    + '.cw-group input:focus{border-color:'+theme+'}'
+    + '.cw-packages{display:flex;flex-direction:column;gap:8px}'
+    + '.cw-pkg-btn{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:12px;background:#fff;font-size:15px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s;color:#374151}'
+    + '.cw-pkg-btn:hover{border-color:'+theme+';background:#f0fdf4}'
+    + '.cw-pkg-active{border-color:'+theme+';background:'+theme+'14;color:'+theme+';box-shadow:0 0 0 3px '+theme+'22}'
     + '.cw-btn{width:100%;background:'+theme+';color:#fff;font-size:17px;font-weight:800;padding:16px;border:none;border-radius:12px;cursor:pointer;margin-top:6px;transition:opacity .15s;letter-spacing:.3px}'
     + '.cw-btn:hover{opacity:.88}'
     + '.cw-note{text-align:center;font-size:13px;color:#9ca3af;margin-top:10px}'
@@ -96,6 +102,15 @@
     +   '</form>'
     +   '<p class="cw-note">🔒 Data kamu aman. Tidak ada spam.</p>'
     + '</div>';
+
+  // Package selection
+  window.cwSelectPkg = function(el) {
+    var btns = mount.querySelectorAll('.cw-pkg-btn');
+    btns.forEach(function(b){ b.classList.remove('cw-pkg-active'); });
+    el.classList.add('cw-pkg-active');
+    var hidden = document.getElementById('cw-pkg');
+    if (hidden) hidden.value = el.getAttribute('data-pkg');
+  };
 
   // Track InitiateCheckout saat form difokus
   var tracked = false;
