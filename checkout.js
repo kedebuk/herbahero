@@ -21,7 +21,7 @@
  *
  *      // Full checkout mode:
  *      shippingEnabled: true,
- *      shippingApiUrl: "https://herbahero.my.id/api/shipping",
+ *      shippingApiUrl: "https://herbahero.kedebik.workers.dev/api/shipping",
  *      shippingOrigin: "",
  *      shippingWeight: 1000,
  *      paymentMethods: [
