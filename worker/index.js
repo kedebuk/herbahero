@@ -356,7 +356,7 @@ async function handleAPI(request, env, url) {
   // Proxy → GET https://live.apikurir.id/v2/district/search?q=...
   if (path === '/api/shipping/search' && method === 'GET') {
     const q = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
-    if (q.length < 2) return json({ success: true, data: [] });
+    if (q.length < 3) return json({ success: true, data: [] });
 
     try {
       const r = await fetch(`${LINCAH_BASE}/district/search?q=${encodeURIComponent(q)}`, {
@@ -379,17 +379,25 @@ async function handleAPI(request, env, url) {
     const body = await safeJson(request);
     if (!body) return json({ success: false, data: [] });
 
+    // Support both flat {originCode, destCode, weight} and nested Lincah format
+    const originCode = body.originCode || (body.origin && body.origin.code) || '';
+    const destCode = body.destCode || (body.destination && body.destination.code) || '';
+
     const lincahBody = {
-      isPickup: body.isPickup !== undefined ? body.isPickup : true,
+      isPickup: body.isPickup !== undefined ? body.isPickup : false,
       isCod: body.isCod !== undefined ? body.isCod : false,
       dimensions: body.dimensions || null,
       weight: String(body.weight || '1'),
       packagePrice: String(body.packagePrice || '97000'),
-      origin: body.origin || { code: '' },
-      destination: body.destination || { code: '' },
-      logistics: body.logistics || [],
+      origin: { code: originCode },
+      destination: { code: destCode },
+      logistics: body.logistics || ['JNE', 'SiCepat', 'J&T Express', 'ID Express', 'Ninja Xpress'],
       services: body.services || ['Regular', 'Express'],
     };
+
+    // Ongkir can be slow (30-60s) — use 90s timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     try {
       const r = await fetch(`${LINCAH_BASE}/ongkir`, {
@@ -400,12 +408,16 @@ async function handleAPI(request, env, url) {
           Accept: 'application/json',
         },
         body: JSON.stringify(lincahBody),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
-      if (!r.ok) return json({ success: false, data: [] });
+      if (!r.ok) return json({ success: false, error: `Lincah error ${r.status}`, data: [] });
       return passThroughJson(r);
-    } catch {
-      return json({ success: false, data: [] });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isTimeout = err && err.name === 'AbortError';
+      return json({ success: false, error: isTimeout ? 'timeout' : 'fetch_error', data: [] });
     }
   }
 

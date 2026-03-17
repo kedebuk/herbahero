@@ -382,26 +382,33 @@
       return;
     }
 
-    // Lincah POST /ongkir body format
-    var pkgPrice = String(state.selectedPkgPrice || prodPrice || 97000);
+    // POST /cost with flat format {originCode, destCode, weight}
     var body = {
-      isPickup: true,
+      originCode: shippingOriginCode || shippingOrigin || '',
+      destCode: destCode,
+      weight: shippingWeight || 1,
+      packagePrice: state.selectedPkgPrice || prodPrice || 97000,
+      isPickup: false,
       isCod: false,
-      dimensions: null,
-      weight: String(shippingWeight || 1),
-      packagePrice: pkgPrice,
-      origin: { code: shippingOriginCode || shippingOrigin || '' },
-      destination: { code: destCode },
-      logistics: [],
+      logistics: ['JNE', 'SiCepat', 'J&T Express', 'ID Express', 'Ninja Xpress'],
       services: ['Regular', 'Express']
     };
+
+    // Ongkir can take 30-60s — show a helpful message after 5s
+    var slowTimer = setTimeout(function() {
+      var loadingEl = courierContainer.querySelector('.cw-courier-loading');
+      if (loadingEl) loadingEl.innerHTML = '<span class="cw-spinner"></span> Mencari kurir... (bisa 30-60 detik)';
+    }, 5000);
 
     fetch(shippingApiUrl + '/cost', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      clearTimeout(slowTimer);
+      return r.json();
+    })
     .then(function(data) {
       // Lincah response: {success, data: [{code, name, costs:[{service, service_name, cost:{value, etd, est}, isCod}]}]}
       var couriers = [];
@@ -455,14 +462,15 @@
         var card = document.createElement('div');
         card.className = 'cw-radio-card';
         card.setAttribute('data-c-idx', idx);
-        // Display: "JNE - REG — Rp 9.000 (1-2 hari)"
+        // Display: "JNE Express - REG Rp 9.000 (1-2 hari)"
         var etdText = c.etd ? ' (' + c.etd + ' hari)' : '';
-        var titleText = c.name + (c.service ? ' — ' + c.service : '');
+        var titleText = c.name + (c.service ? ' - ' + c.service : '');
+        var detailText = fmt(c.price) + etdText;
         card.innerHTML =
           '<div class="cw-radio-dot"></div>'
           + '<div class="cw-radio-info">'
           +   '<div class="cw-radio-name">' + titleText + '</div>'
-          +   (etdText ? '<div class="cw-radio-detail">Estimasi' + etdText + '</div>' : '')
+          +   '<div class="cw-radio-detail">' + detailText + '</div>'
           + '</div>'
           + '<div class="cw-radio-price">' + fmt(c.price) + '</div>';
         card.addEventListener('click', function() {
@@ -475,6 +483,7 @@
       });
     })
     .catch(function(err) {
+      clearTimeout(slowTimer);
       console.error('[checkout] cost error:', err);
       courierContainer.innerHTML = '<p style="color:#dc2626;font-size:13px;text-align:center;padding:12px 0">Gagal mengambil ongkir. Coba lagi.</p>';
     });
