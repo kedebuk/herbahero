@@ -369,7 +369,7 @@
   }
 
   // ─── Fetch Couriers ─────────────────────────────────────────────────────
-  // destCode: Lincah district code, e.g. "34.02.01"
+  // destCode: RajaOngkir destination ID (numeric) from search results
   // Render courier cards into container
   function renderCourierCards(courierContainer, couriers) {
     courierContainer.innerHTML = '';

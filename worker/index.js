@@ -9,15 +9,12 @@ import { generateLPShell } from './lp-shell.js';
 
 const ROOT_DOMAIN = 'herbahero.my.id';
 
-// ─── Lincah API (apikurir.id) ─────────────────────────────────────────────────
-const LINCAH_BASE = 'https://live.apikurir.id/v2';
-const LINCAH_API_ID = '03ac6a6e-7149-4c4c-8e81-6f944a161551';
-const LINCAH_API_KEY = '56d7afd.307082bc7c7604d93fa64ff24727e2ca4a37469802f8c5b6d18b5c8e8';
+// ─── RajaOngkir V2 API (rajaongkir.komerce.id) ───────────────────────────────
+const RAJAONGKIR_BASE = 'https://rajaongkir.komerce.id/api/v1';
+const RAJAONGKIR_API_KEY = 'PvYG24wQa47b39d7217ef23f5SnIOefa';
 
-function lincahAuthHeader(env) {
-  const id = (env && env.LINCAH_API_ID) || LINCAH_API_ID;
-  const key = (env && env.LINCAH_API_KEY) || LINCAH_API_KEY;
-  return 'Basic ' + btoa(id + ':' + key);
+function rajaongkirKey(env) {
+  return (env && env.RAJAONGKIR_API_KEY) || RAJAONGKIR_API_KEY;
 }
 
 const CORS_HEADERS = {
@@ -353,90 +350,127 @@ async function handleAPI(request, env, url) {
   }
 
   // GET /api/shipping/search?q=...
-  // Proxy → GET https://live.apikurir.id/v2/district/search?q=...
+  // Proxy → GET RajaOngkir V2 domestic-destination search
   if (path === '/api/shipping/search' && method === 'GET') {
     const q = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
     if (q.length < 3) return json({ success: true, data: [] });
 
     try {
-      const r = await fetch(`${LINCAH_BASE}/district/search?q=${encodeURIComponent(q)}`, {
-        headers: {
-          Authorization: lincahAuthHeader(env),
-          Accept: 'application/json',
-        },
-      });
+      const limit = url.searchParams.get('limit') || '10';
+      const offset = url.searchParams.get('offset') || '0';
+      const r = await fetch(
+        `${RAJAONGKIR_BASE}/destination/domestic-destination?search=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`,
+        { headers: { key: rajaongkirKey(env) } }
+      );
 
       if (!r.ok) return json({ success: false, data: [] });
-      return passThroughJson(r);
+      const result = await r.json();
+      // Normalize to our format: {success, data: [{id, code, name, fullName, ...}]}
+      const items = (result.data || []).map(d => ({
+        id: d.id,
+        code: String(d.id),
+        name: d.subdistrict_name || d.district_name || '',
+        district: d.district_name || '',
+        city: d.city_name || '',
+        province: d.province_name || '',
+        zip: d.zip_code || '',
+        fullName: d.label || '',
+      }));
+      return json({ success: true, data: items });
     } catch {
       return json({ success: false, data: [] });
     }
   }
 
   // POST /api/shipping/cost
-  // Proxy → POST https://live.apikurir.id/v2/ongkir
+  // Proxy → POST RajaOngkir V2 calculate/domestic-cost
   if (path === '/api/shipping/cost' && method === 'POST') {
     const body = await safeJson(request);
     if (!body) return json({ success: false, data: [] });
 
-    // Support both flat {originCode, destCode, weight} and nested Lincah format
-    const originCode = body.originCode || (body.origin && body.origin.code) || '';
-    const destCode = body.destCode || (body.destination && body.destination.code) || '';
+    // Accept origin/destination as RajaOngkir numeric IDs
+    const origin = body.origin || body.originCode || '';
+    const destination = body.destination || body.destCode || '';
+    const weight = body.weight || 1000; // grams
+    // Support multiple couriers or single
+    const couriers = body.courier ? [body.courier]
+      : (body.logistics || ['sap']).map(c => c.toLowerCase().replace(/\s+/g, ''));
 
-    const lincahBody = {
-      isPickup: body.isPickup !== undefined ? body.isPickup : false,
-      isCod: body.isCod !== undefined ? body.isCod : false,
-      dimensions: body.dimensions || null,
-      weight: String(body.weight || '1'),
-      packagePrice: String(body.packagePrice || '97000'),
-      origin: { code: originCode },
-      destination: { code: destCode },
-      logistics: body.logistics || ['JNE', 'SiCepat', 'J&T Express', 'ID Express', 'Ninja Xpress'],
-      services: body.services || ['Regular', 'Express'],
+    // Map common names to RajaOngkir courier codes
+    const courierMap = {
+      'saplogistic': 'sap', 'sap logistic': 'sap', 'sap': 'sap',
+      'jne': 'jne', 'sicepat': 'sicepat', 'j&texpress': 'jnt', 'j&t express': 'jnt', 'jnt': 'jnt',
+      'idexpress': 'ide', 'id express': 'ide', 'idx': 'ide', 'ide': 'ide',
+      'ninjaxpress': 'ninja', 'ninja xpress': 'ninja', 'ninja': 'ninja',
+      'paxel': 'paxel', 'pos': 'pos', 'tiki': 'tiki',
     };
 
-    // Ongkir can be slow (30-60s) — use 90s timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    // Query each courier (RajaOngkir needs one courier per request)
+    const allResults = [];
+    for (const rawCourier of couriers) {
+      const code = courierMap[rawCourier.toLowerCase()] || rawCourier.toLowerCase();
+      try {
+        const formBody = `origin=${origin}&destination=${destination}&weight=${weight}&courier=${code}`;
+        const r = await fetch(`${RAJAONGKIR_BASE}/calculate/domestic-cost`, {
+          method: 'POST',
+          headers: {
+            key: rajaongkirKey(env),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: formBody,
+        });
 
-    try {
-      const r = await fetch(`${LINCAH_BASE}/ongkir`, {
-        method: 'POST',
-        headers: {
-          Authorization: lincahAuthHeader(env),
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(lincahBody),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (!r.ok) return json({ success: false, error: `Lincah error ${r.status}`, data: [] });
-      return passThroughJson(r);
-    } catch (err) {
-      clearTimeout(timeoutId);
-      const isTimeout = err && err.name === 'AbortError';
-      return json({ success: false, error: isTimeout ? 'timeout' : 'fetch_error', data: [] });
+        if (r.ok) {
+          const result = await r.json();
+          if (result.data && Array.isArray(result.data)) {
+            for (const item of result.data) {
+              allResults.push({
+                code: item.code || code,
+                name: item.name || code,
+                service: item.service || '',
+                description: item.description || '',
+                cost: item.cost || 0,
+                etd: item.etd || '',
+              });
+            }
+          }
+        }
+      } catch {
+        // Skip failed courier
+      }
     }
+
+    // Normalize to Lincah-compatible format for backward compat with checkout.js
+    // Group by courier code
+    const grouped = {};
+    for (const r of allResults) {
+      if (!grouped[r.code]) {
+        grouped[r.code] = { code: r.code, name: r.name, costs: [] };
+      }
+      grouped[r.code].costs.push({
+        service: r.service,
+        service_name: r.description || r.service,
+        cost: { value: r.cost, etd: r.etd.replace(/ day/g, '') },
+      });
+    }
+
+    return json({ success: true, data: Object.values(grouped) });
   }
 
   // GET /api/shipping/couriers
-  // Proxy → GET https://live.apikurir.id/v2/courier
+  // Static list of available couriers (RajaOngkir V2 codes)
   if (path === '/api/shipping/couriers' && method === 'GET') {
-    try {
-      const r = await fetch(`${LINCAH_BASE}/courier`, {
-        headers: {
-          Authorization: lincahAuthHeader(env),
-          Accept: 'application/json',
-        },
-      });
-
-      if (!r.ok) return json({ success: false, data: [] });
-      return passThroughJson(r);
-    } catch {
-      return json({ success: false, data: [] });
-    }
+    return json({ success: true, data: [
+      { code: 'sap', name: 'SAP Logistic', isMain: true },
+      { code: 'jne', name: 'JNE', isMain: true },
+      { code: 'sicepat', name: 'SiCepat', isMain: true },
+      { code: 'jnt', name: 'J&T Express', isMain: true },
+      { code: 'ide', name: 'ID Express', isMain: true },
+      { code: 'ninja', name: 'Ninja Xpress', isMain: true },
+      { code: 'pos', name: 'POS Indonesia', isMain: false },
+      { code: 'tiki', name: 'TIKI', isMain: false },
+      { code: 'paxel', name: 'Paxel', isMain: false },
+    ]});
   }
 
   return json({ error: 'Not Found' }, 404);
