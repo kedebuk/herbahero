@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo Checkout Form</title>
+<style>
+body { font-family: -apple-system, sans-serif; background: #f3f4f6; margin: 0; padding: 40px 16px; }
+h1 { text-align: center; font-size: 24px; margin-bottom: 8px; }
+p.sub { text-align: center; color: #6b7280; margin-bottom: 32px; }
+</style>
+</head>
+<body>
+
+<h1>📚 Bisnis Kefir Kelapa Tropis</h1>
+<p class="sub">Minuman Fermentasi Probiotik — Untung Rp2 Juta/Hari</p>
+
+<script>
+var CHECKOUT_CONFIG = {
+  pixelId: "",
+  productName: "Bisnis Kefir Kelapa Tropis",
+  productPrice: 97000,
+  waNumber: "6285270404312",
+  packages: [
+    "Paket Ebook (1 buku) — Rp 97.000",
+    "Paket Bundling (3 buku) — Rp 247.000"
+  ],
+  waTemplate: "Halo, saya mau order *{package}* atas nama {name}. No HP: {phone}",
+  ctaText: "PESAN via WhatsApp 💬",
+  themeColor: "#0d9488"
+};
+</script>
+<div id="cw-form"></div>
+<script src="https://kedebuk.github.io/herbahero/checkout.js"></script>
+
+</body>
+</html>
