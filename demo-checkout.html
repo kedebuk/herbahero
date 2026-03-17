@@ -38,15 +38,14 @@ var CHECKOUT_CONFIG = {
   shippingOriginCode: "31.75.04",  // Kramatjati, Jakarta Timur
   shippingWeight: 1,  // kg
 
-  // Fallback rates — shown instantly if API > 10 detik (editable per LP)
-  shippingFallbackTimeout: 10000, // 10 detik, lalu pakai fallback
+  // Kurir yang ditampilkan (default: SAP Logistic saja — 1 kurir = API cepat)
+  shippingLogistics: ["SAP Logistic"],
+  shippingServices: ["Regular"],
+
+  // Fallback rates — shown instantly if API > 10 detik
+  shippingFallbackTimeout: 10000,
   shippingFallbackRates: [
-    { name: "SAP Logistic", service: "Regular", price: 12000, etd: "2-3" },
-    { name: "JNE", service: "REG", price: 15000, etd: "2-3" },
-    { name: "SiCepat", service: "Regular", price: 13000, etd: "1-2" },
-    { name: "J&T Express", service: "Regular", price: 14000, etd: "2-3" },
-    { name: "ID Express", service: "Regular", price: 12000, etd: "2-3" },
-    { name: "Ninja Xpress", service: "Regular", price: 15000, etd: "2-4" }
+    { name: "SAP Logistic", service: "Regular", price: 12000, etd: "2-3" }
   ],
 
   paymentMethods: [

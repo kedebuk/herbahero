@@ -422,9 +422,13 @@
     .then(function(r) { return r.json(); })
     .then(function(courierData) {
       var available = [];
+      var filterLogistics = cfg.shippingLogistics || null; // null = show all isMain
       if (courierData && courierData.success && Array.isArray(courierData.data)) {
         courierData.data.forEach(function(c) {
-          if (c.isMain) {
+          var show = filterLogistics
+            ? filterLogistics.some(function(l) { return l.toLowerCase() === (c.name || '').toLowerCase() || l.toLowerCase() === (c.code || '').toLowerCase(); })
+            : c.isMain;
+          if (show) {
             available.push({
               code: c.code || '',
               name: c.name || c.code || 'Kurir',
@@ -497,6 +501,9 @@
       }
 
       // Fire API call in parallel
+      // Use configured logistics list, or default to SAP only (faster API response)
+      var logisticsList = cfg.shippingLogistics || ['SAP Logistic'];
+      var servicesList = cfg.shippingServices || ['Regular'];
       var body = {
         originCode: shippingOriginCode || shippingOrigin || '',
         destCode: destCode,
@@ -504,8 +511,8 @@
         packagePrice: state.selectedPkgPrice || prodPrice || 97000,
         isPickup: false,
         isCod: false,
-        logistics: available.map(function(c) { return c.name; }),
-        services: ['Regular', 'Express']
+        logistics: logisticsList,
+        services: servicesList
       };
 
       fetch(shippingApiUrl + '/cost', {
