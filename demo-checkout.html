@@ -3,35 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Demo Checkout Form</title>
+<title>Demo Checkout — Full Mode (Shipping + Payment)</title>
 <style>
-body { font-family: -apple-system, sans-serif; background: #f3f4f6; margin: 0; padding: 40px 16px; }
+body { font-family: -apple-system, system-ui, sans-serif; background: #f3f4f6; margin: 0; padding: 40px 16px; }
 h1 { text-align: center; font-size: 24px; margin-bottom: 8px; }
 p.sub { text-align: center; color: #6b7280; margin-bottom: 32px; }
+.demo-note { max-width: 480px; margin: 0 auto 24px; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; text-align: center; }
 </style>
 </head>
 <body>
 
-<h1>📚 Bisnis Kefir Kelapa Tropis</h1>
-<p class="sub">Minuman Fermentasi Probiotik — Untung Rp2 Juta/Hari</p>
+<h1>🌿 HerbaHero — Kapsul Herbal Premium</h1>
+<p class="sub">Kapsul Herbal Alami — Garansi Uang Kembali 100%</p>
+
+<div class="demo-note">⚡ Demo: Full checkout mode dengan pengiriman, pilih kurir, dan pembayaran</div>
 
 <script>
 var CHECKOUT_CONFIG = {
   pixelId: "",
-  productName: "Bisnis Kefir Kelapa Tropis",
-  productPrice: 97000,
+  productName: "HerbaHero Kapsul Premium",
+  productPrice: 129000,
   waNumber: "6285270404312",
   packages: [
-    "Paket Ebook (1 buku) — Rp 97.000",
-    "Paket Bundling (3 buku) — Rp 247.000"
+    "Paket 1 Botol — Rp 129.000",
+    "Paket 3 Botol (HEMAT) — Rp 349.000",
+    "Paket 5 Botol (BEST SELLER) — Rp 549.000"
   ],
-  waTemplate: "Halo, saya mau order *{package}* atas nama {name}. No HP: {phone}",
-  ctaText: "PESAN via WhatsApp 💬",
-  themeColor: "#0d9488"
+  ctaText: "Klik disini untuk pesan sekarang 💬",
+  themeColor: "#16a34a",
+
+  // Full checkout mode
+  shippingEnabled: true,
+  shippingApiUrl: "https://herbahero.my.id/api/shipping",
+  shippingOrigin: "",
+  shippingWeight: 1000,
+  paymentMethods: [
+    { id: "mandiri", name: "Bank Mandiri", logo: "" },
+    { id: "bca", name: "Bank Central Asia", logo: "" },
+    { id: "cod", name: "COD (Bayar di Tempat)", logo: "" }
+  ]
 };
 </script>
 <div id="cw-form"></div>
-<script src="https://kedebuk.github.io/herbahero/checkout.js"></script>
+<script src="checkout.js"></script>
 
 </body>
 </html>
