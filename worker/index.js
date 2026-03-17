@@ -8,6 +8,18 @@
 import { generateLPShell } from './lp-shell.js';
 
 const ROOT_DOMAIN = 'herbahero.my.id';
+
+// ─── Lincah API (apikurir.id) ─────────────────────────────────────────────────
+const LINCAH_BASE = 'https://live.apikurir.id/v2';
+const LINCAH_API_ID = '03ac6a6e-7149-4c4c-8e81-6f944a161551';
+const LINCAH_API_KEY = '56d7afd.307082bc7c7604d93fa64ff24727e2ca4a37469802f8c5b6d18b5c8e8';
+
+function lincahAuthHeader(env) {
+  const id = (env && env.LINCAH_API_ID) || LINCAH_API_ID;
+  const key = (env && env.LINCAH_API_KEY) || LINCAH_API_KEY;
+  return 'Basic ' + btoa(id + ':' + key);
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
@@ -340,64 +352,78 @@ async function handleAPI(request, env, url) {
     return json({ ok: true });
   }
 
-  // GET /api/shipping/search?search=...
+  // GET /api/shipping/search?q=...
+  // Proxy → GET https://live.apikurir.id/v2/district/search?q=...
   if (path === '/api/shipping/search' && method === 'GET') {
-    const q = (url.searchParams.get('search') || '').trim();
-    if (q.length < 2) return json({ data: [] });
-
-    const globalCfg = (await env.KV.get('config:global', 'json')) || {};
-    const apiKey = globalCfg.lincahApiKey || env.LINCAH_API_KEY || '';
-    const apiUrl = normalizeApiUrl(globalCfg.lincahApiUrl || env.LINCAH_API_URL || '');
-
-    if (!apiKey || !apiUrl) return json({ data: [] });
+    const q = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
+    if (q.length < 2) return json({ success: true, data: [] });
 
     try {
-      const r = await fetch(`${apiUrl}/destination?search=${encodeURIComponent(q)}`, {
+      const r = await fetch(`${LINCAH_BASE}/district/search?q=${encodeURIComponent(q)}`, {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: lincahAuthHeader(env),
           Accept: 'application/json',
         },
       });
 
-      if (!r.ok) return json({ data: [] });
+      if (!r.ok) return json({ success: false, data: [] });
       return passThroughJson(r);
     } catch {
-      return json({ data: [] });
+      return json({ success: false, data: [] });
     }
   }
 
   // POST /api/shipping/cost
+  // Proxy → POST https://live.apikurir.id/v2/ongkir
   if (path === '/api/shipping/cost' && method === 'POST') {
     const body = await safeJson(request);
-    if (!body) return json({ data: [] });
+    if (!body) return json({ success: false, data: [] });
 
-    const globalCfg = (await env.KV.get('config:global', 'json')) || {};
-    const apiKey = globalCfg.lincahApiKey || env.LINCAH_API_KEY || '';
-    const apiUrl = normalizeApiUrl(globalCfg.lincahApiUrl || env.LINCAH_API_URL || '');
-
-    if (!apiKey || !apiUrl) return json({ data: [] });
-
-    const origin = body.origin || globalCfg?.warehouseOrigin?.cityId || '';
+    const lincahBody = {
+      isPickup: body.isPickup !== undefined ? body.isPickup : true,
+      isCod: body.isCod !== undefined ? body.isCod : false,
+      dimensions: body.dimensions || null,
+      weight: String(body.weight || '1'),
+      packagePrice: String(body.packagePrice || '97000'),
+      origin: body.origin || { code: '' },
+      destination: body.destination || { code: '' },
+      logistics: body.logistics || [],
+      services: body.services || ['Regular', 'Express'],
+    };
 
     try {
-      const r = await fetch(`${apiUrl}/cost`, {
+      const r = await fetch(`${LINCAH_BASE}/ongkir`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: lincahAuthHeader(env),
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({
-          origin,
-          destination: body.destId,
-          weight: body.weight || 1000,
-        }),
+        body: JSON.stringify(lincahBody),
       });
 
-      if (!r.ok) return json({ data: [] });
+      if (!r.ok) return json({ success: false, data: [] });
       return passThroughJson(r);
     } catch {
-      return json({ data: [] });
+      return json({ success: false, data: [] });
+    }
+  }
+
+  // GET /api/shipping/couriers
+  // Proxy → GET https://live.apikurir.id/v2/courier
+  if (path === '/api/shipping/couriers' && method === 'GET') {
+    try {
+      const r = await fetch(`${LINCAH_BASE}/courier`, {
+        headers: {
+          Authorization: lincahAuthHeader(env),
+          Accept: 'application/json',
+        },
+      });
+
+      if (!r.ok) return json({ success: false, data: [] });
+      return passThroughJson(r);
+    } catch {
+      return json({ success: false, data: [] });
     }
   }
 

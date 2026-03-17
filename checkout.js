@@ -50,15 +50,18 @@
   // Full checkout config
   var shippingEnabled = cfg.shippingEnabled === true;
   var shippingApiUrl = cfg.shippingApiUrl || "";
-  var shippingOrigin = cfg.shippingOrigin || "";
-  var shippingWeight = cfg.shippingWeight || 1000;
+  // Lincah origin code (district code, e.g. "20.71.05" for Medan Kota)
+  var shippingOriginCode = cfg.shippingOriginCode || cfg.shippingOrigin || "";
+  var shippingWeight = cfg.shippingWeight || 1;  // kg (Lincah uses kg, not grams)
   var paymentMethods = cfg.paymentMethods || [];
+  // Keep shippingOrigin as alias for backward compat
+  var shippingOrigin = shippingOriginCode;
 
   // State
   var state = {
     selectedPkg: packages.length > 0 ? packages[0] : prodName,
     selectedPkgPrice: prodPrice,
-    selectedCity: null,     // {id, name}
+    selectedCity: null,     // {code, name} — Lincah district code
     selectedCourier: null,  // {name, service, price}
     selectedPayment: null,  // {id, name}
     couriers: []
@@ -300,15 +303,17 @@
       acList.innerHTML = '<div class="cw-ac-loading"><span class="cw-spinner"></span>Mencari...</div>';
       acList.style.display = 'block';
 
-      fetch(shippingApiUrl + '/search?search=' + encodeURIComponent(query))
+      // Lincah API: GET /api/shipping/search?q=...
+      // Response: {success, data: [{code, fullName, province, city, name, id}]}
+      fetch(shippingApiUrl + '/search?q=' + encodeURIComponent(query))
         .then(function(r) { return r.json(); })
         .then(function(data) {
-          // Handle various response shapes
+          // Lincah response: data.data[]
           var results = [];
-          if (Array.isArray(data)) {
-            results = data;
-          } else if (data && Array.isArray(data.data)) {
+          if (data && Array.isArray(data.data)) {
             results = data.data;
+          } else if (Array.isArray(data)) {
+            results = data;
           } else if (data && Array.isArray(data.results)) {
             results = data.results;
           }
@@ -320,18 +325,19 @@
           results.forEach(function(item) {
             var div = document.createElement('div');
             div.className = 'cw-ac-item';
-            // Try common field names
-            var label = item.label || item.name || item.subdistrict_name || item.city_name || item.text || (item.city + ', ' + item.province) || JSON.stringify(item);
-            var id = item.id || item.destination_id || item.subdistrict_id || item.city_id || '';
+            // Lincah returns fullName like "Medan Kota, Kota Medan, Sumatera Utara"
+            var label = item.fullName || item.label || item.name || item.subdistrict_name || item.city_name || item.text || '';
+            // Lincah district code (e.g. "20.71.05") — used as destination code in ongkir API
+            var code = item.code || item.id || item.destination_id || '';
             div.textContent = label;
-            div.setAttribute('data-id', id);
+            div.setAttribute('data-code', code);
             div.setAttribute('data-label', label);
             div.addEventListener('click', function() {
               cityInput.value = label;
-              state.selectedCity = { id: id, name: label };
+              state.selectedCity = { code: code, name: label };
               acList.style.display = 'none';
-              // Fetch courier costs
-              fetchCouriers(id);
+              // Fetch courier costs using district code
+              fetchCouriers(code);
             });
             acList.appendChild(div);
           });
@@ -356,10 +362,12 @@
         acList.style.display = 'none';
       }
     });
+
   }
 
   // ─── Fetch Couriers ─────────────────────────────────────────────────────
-  function fetchCouriers(destId) {
+  // destCode: Lincah district code, e.g. "34.02.01"
+  function fetchCouriers(destCode) {
     var courierContainer = qs('#cw-courier-list');
     if (!courierContainer) return;
 
@@ -368,10 +376,24 @@
     state.couriers = [];
     updateSummary();
 
+    // Graceful fallback if shippingApiUrl not set
+    if (!shippingApiUrl) {
+      courierContainer.innerHTML = '<p style="color:#9ca3af;font-size:13px;text-align:center;padding:12px 0">Layanan ongkir belum tersedia</p>';
+      return;
+    }
+
+    // Lincah POST /ongkir body format
+    var pkgPrice = String(state.selectedPkgPrice || prodPrice || 97000);
     var body = {
-      origin: shippingOrigin,
-      destId: destId,
-      weight: shippingWeight
+      isPickup: true,
+      isCod: false,
+      dimensions: null,
+      weight: String(shippingWeight || 1),
+      packagePrice: pkgPrice,
+      origin: { code: shippingOriginCode || shippingOrigin || '' },
+      destination: { code: destCode },
+      logistics: [],
+      services: ['Regular', 'Express']
     };
 
     fetch(shippingApiUrl + '/cost', {
@@ -381,36 +403,45 @@
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      // Parse courier results — handle various formats
+      // Lincah response: {success, data: [{code, name, costs:[{service, service_name, cost:{value, etd, est}, isCod}]}]}
       var couriers = [];
-      var raw = Array.isArray(data) ? data : (data.data || data.results || data.costs || []);
+      var raw = [];
 
-      if (Array.isArray(raw)) {
-        raw.forEach(function(item) {
-          // Format 1: flat {courier, service, price}
-          if (item.price !== undefined || item.cost !== undefined) {
-            couriers.push({
-              name: item.courier || item.courier_name || item.name || 'Kurir',
-              service: item.service || item.service_name || '',
-              price: item.price || item.cost || 0,
-              etd: item.etd || item.estimation || ''
-            });
-          }
-          // Format 2: nested {courier_name, costs: [{service, cost:[{value}]}]}
-          else if (item.costs && Array.isArray(item.costs)) {
-            item.costs.forEach(function(svc) {
-              var price = 0;
-              if (svc.cost && svc.cost[0]) price = svc.cost[0].value || 0;
-              couriers.push({
-                name: item.courier_name || item.name || item.code || 'Kurir',
-                service: svc.service || '',
-                price: price,
-                etd: (svc.cost && svc.cost[0] && svc.cost[0].etd) || svc.etd || ''
-              });
-            });
-          }
-        });
+      if (data && Array.isArray(data.data)) {
+        raw = data.data;
+      } else if (Array.isArray(data)) {
+        raw = data;
       }
+
+      raw.forEach(function(item) {
+        // Lincah format: item.name = courier name, item.costs = [{service, service_name, cost:{value, etd}}]
+        if (item.costs && Array.isArray(item.costs)) {
+          item.costs.forEach(function(svc) {
+            var price = 0;
+            var etd = '';
+            if (svc.cost) {
+              price = svc.cost.value || 0;
+              etd = svc.cost.etd || '';
+            }
+            couriers.push({
+              code: item.code || '',
+              name: item.name || item.code || 'Kurir',
+              service: svc.service_name || svc.service || '',
+              price: price,
+              etd: etd
+            });
+          });
+        } else if (item.price !== undefined || item.cost !== undefined) {
+          // Flat format fallback
+          couriers.push({
+            code: item.code || '',
+            name: item.courier || item.courier_name || item.name || 'Kurir',
+            service: item.service || item.service_name || '',
+            price: item.price || item.cost || 0,
+            etd: item.etd || item.estimation || ''
+          });
+        }
+      });
 
       state.couriers = couriers;
 
@@ -424,11 +455,13 @@
         var card = document.createElement('div');
         card.className = 'cw-radio-card';
         card.setAttribute('data-c-idx', idx);
+        // Display: "JNE - REG — Rp 9.000 (1-2 hari)"
         var etdText = c.etd ? ' (' + c.etd + ' hari)' : '';
+        var titleText = c.name + (c.service ? ' — ' + c.service : '');
         card.innerHTML =
           '<div class="cw-radio-dot"></div>'
           + '<div class="cw-radio-info">'
-          +   '<div class="cw-radio-name">' + c.name + ' - ' + c.service + '</div>'
+          +   '<div class="cw-radio-name">' + titleText + '</div>'
           +   (etdText ? '<div class="cw-radio-detail">Estimasi' + etdText + '</div>' : '')
           + '</div>'
           + '<div class="cw-radio-price">' + fmt(c.price) + '</div>';
