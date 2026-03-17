@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Judul Ebook</title>
+<meta property="og:title" id="ogTitle" content="Judul Ebook">
+<meta property="og:description" id="ogDesc" content="">
+<meta property="og:image" id="ogImage" content="">
+<meta property="og:url" id="ogUrl" content="">
+<meta property="og:type" content="product">
+<meta name="description" id="metaDesc" content="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script>
+const LP_CONFIG = {
+  title: "Judul Ebook — Tagline Menarik",
+  pixelId: "",
+  capiToken: "",
+  ogImage: "",
+  ogDescription: "",
+  heroImage: "assets/images/ebook-cover.jpg",
+  heroAlt: "Cover Ebook",
+  subtitle: "Tagline singkat yang bikin penasaran",
+  productName: "Judul Ebook",
+  productPrice: 97000,
+  productOriginalPrice: 197000,
+  bonusItems: [
+    "✅ Ebook Utama (PDF, 80+ hal)",
+    "✅ Bonus: Kalkulator Usaha Excel",
+    "✅ Bonus: Template Bisnis Siap Pakai",
+    "✅ Update Gratis Seumur Hidup"
+  ],
+  benefits: [
+    {icon:"📖", title:"Panduan Lengkap", desc:"Step-by-step dari nol sampai profit"},
+    {icon:"💰", title:"Modal Kecil", desc:"Bisa mulai dari Rp 500 ribu saja"},
+    {icon:"🏠", title:"Dari Rumah", desc:"Tidak perlu toko atau tempat khusus"},
+    {icon:"🚀", title:"Cepat Balik Modal", desc:"Potensi BEP dalam 30 hari pertama"}
+  ],
+  testimonials: [
+    {text:"Ebook ini detail banget, langsung bisa dipraktekkan!",author:"Budi W. - Jakarta",stars:5},
+    {text:"Udah coba sesuai panduan, dalam 2 minggu sudah ada order pertama!",author:"Sari M. - Surabaya",stars:5},
+    {text:"Worth it banget, bonusnya juga helpful.",author:"Dedi P. - Bandung",stars:5}
+  ],
+  webhookUrl: "https://script.google.com/macros/s/XXXXX/exec",
+  waNumber: "6285270404312",
+  waMessageTemplate: "Halo, saya mau order ebook *{product}* atas nama {name}. No. HP: {phone}",
+  themeColor: "#16a34a",
+  ctaText: "DAPATKAN SEKARANG — Rp 97.000",
+  ctaSubtext: "Dikirim via WhatsApp dalam 5 menit",
+  urgencyText: "⚡ Harga promo hari ini saja!",
+  guaranteeText: "🛡️ Garansi uang kembali 7 hari jika tidak puas"
+};
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}
+.hero{background:linear-gradient(135deg,var(--theme,#16a34a) 0%,#065f46 100%);color:#fff;padding:48px 20px 60px;text-align:center}
+.hero-badge{display:inline-block;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:16px;letter-spacing:.5px}
+.hero h1{font-size:clamp(24px,5vw,42px);font-weight:800;line-height:1.2;margin-bottom:16px;max-width:700px;margin-inline:auto}
+.hero-sub{font-size:18px;opacity:.9;max-width:500px;margin:0 auto 32px}
+.hero-img{width:220px;max-width:80%;margin:0 auto 32px;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.4));display:block}
+.price-box{background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);border-radius:16px;padding:20px;max-width:380px;margin:0 auto 24px}
+.price-old{font-size:18px;text-decoration:line-through;opacity:.7}
+.price-new{font-size:clamp(32px,6vw,48px);font-weight:800}
+.price-save{font-size:14px;background:#fbbf24;color:#1a1a1a;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px;font-weight:700}
+.cta-btn{display:block;background:#fbbf24;color:#1a1a1a;font-size:20px;font-weight:800;padding:18px 32px;border-radius:12px;text-align:center;text-decoration:none;max-width:420px;margin:0 auto;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:transform .15s,box-shadow .15s}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,0.4)}
+.cta-sub{text-align:center;font-size:14px;opacity:.8;margin-top:10px}
+.urgency{text-align:center;font-size:15px;font-weight:600;color:#fbbf24;margin-top:12px}
+.section{padding:48px 20px;max-width:720px;margin:0 auto}
+.section-title{font-size:clamp(22px,4vw,32px);font-weight:800;text-align:center;margin-bottom:32px}
+.benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+.benefit{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px}
+.benefit-icon{font-size:32px;margin-bottom:12px}
+.benefit h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.benefit p{font-size:14px;color:#555}
+.bonus-list{background:#fefce8;border:2px solid #fde047;border-radius:16px;padding:28px;margin-bottom:32px}
+.bonus-list h3{font-size:18px;font-weight:800;margin-bottom:16px}
+.bonus-list li{list-style:none;padding:8px 0;font-size:16px;font-weight:600;border-bottom:1px solid #fde047}
+.bonus-list li:last-child{border-bottom:none}
+.testimonials{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.testi{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px}
+.testi-stars{color:#fbbf24;font-size:18px;margin-bottom:8px}
+.testi-text{font-size:15px;font-style:italic;color:#374151;margin-bottom:10px}
+.testi-author{font-size:14px;font-weight:700;color:#6b7280}
+.guarantee{background:#f0fdf4;border:2px solid #16a34a;border-radius:16px;padding:24px;text-align:center;margin-top:40px}
+.guarantee-icon{font-size:48px;margin-bottom:12px}
+.guarantee h3{font-size:20px;font-weight:800;margin-bottom:8px;color:#15803d}
+.footer{background:#1a1a1a;color:#9ca3af;text-align:center;padding:24px;font-size:13px}
+.form-section{background:#f9fafb;padding:48px 20px}
+.form-wrap{background:#fff;border:2px solid #e5e7eb;border-radius:20px;padding:32px;max-width:500px;margin:0 auto}
+.form-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:8px}
+.form-sub{text-align:center;color:#6b7280;margin-bottom:24px;font-size:15px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-weight:600;margin-bottom:6px;font-size:15px}
+.form-group input{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:10px;font-size:16px;font-family:inherit;transition:border-color .15s}
+.form-group input:focus{outline:none;border-color:var(--theme,#16a34a)}
+.submit-btn{width:100%;background:var(--theme,#16a34a);color:#fff;font-size:18px;font-weight:800;padding:18px;border:none;border-radius:12px;cursor:pointer;margin-top:8px;transition:opacity .15s}
+.submit-btn:hover{opacity:.9}
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;background:var(--theme,#16a34a);padding:14px 20px;z-index:99;display:none}
+.sticky-cta a{display:block;background:#fbbf24;color:#1a1a1a;font-size:17px;font-weight:800;padding:14px;border-radius:10px;text-align:center;text-decoration:none;max-width:500px;margin:0 auto}
+@media(max-width:480px){.sticky-cta{display:block}}
+</style>
+</head>
+<body>
+
+<!-- HERO SECTION -->
+<div class="hero" id="hero">
+  <div class="hero-badge">📚 EBOOK DIGITAL</div>
+  <h1 id="heroTitle">Judul Ebook</h1>
+  <p class="hero-sub" id="heroSub">Tagline yang menarik perhatian</p>
+  <img id="heroImg" class="hero-img" src="" alt="Cover ebook">
+  <div class="price-box">
+    <div class="price-old" id="priceOld">Rp 197.000</div>
+    <div class="price-new" id="priceNew">Rp 97.000</div>
+    <div class="price-save">Hemat 51%</div>
+  </div>
+  <a href="#order-form" class="cta-btn" id="heroCta" onclick="fbTrack('InitiateCheckout')">DAPATKAN SEKARANG</a>
+  <p class="cta-sub" id="ctaSub">Dikirim via WhatsApp dalam 5 menit</p>
+  <p class="urgency" id="heroUrgency"></p>
+</div>
+
+<!-- BENEFITS -->
+<div class="section">
+  <h2 class="section-title">Apa yang kamu dapat?</h2>
+  <div class="benefits" id="benefitsList"></div>
+</div>
+
+<!-- BONUS -->
+<div class="section" style="padding-top:0">
+  <div class="bonus-list">
+    <h3>🎁 Yang Kamu Dapatkan:</h3>
+    <ul id="bonusList"></ul>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+<div class="section" style="background:#f9fafb;max-width:100%;padding:48px 20px">
+  <div style="max-width:720px;margin:0 auto">
+    <h2 class="section-title">Kata Mereka yang Sudah Beli</h2>
+    <div class="testimonials" id="testiList"></div>
+  </div>
+</div>
+
+<!-- ORDER FORM -->
+<div class="form-section" id="order-form">
+  <div class="form-wrap">
+    <div class="form-title">🛒 Pesan Sekarang</div>
+    <p class="form-sub" id="formSub">Isi data di bawah, kami kirim via WhatsApp</p>
+    <form id="orderForm">
+      <div class="form-group">
+        <label>Nama Lengkap *</label>
+        <input type="text" id="fieldName" placeholder="Nama kamu" required>
+      </div>
+      <div class="form-group">
+        <label>No. WhatsApp *</label>
+        <input type="tel" id="fieldPhone" placeholder="08xxx" required>
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">KIRIM ORDER via WhatsApp</button>
+    </form>
+    <div class="guarantee" style="margin-top:24px">
+      <div class="guarantee-icon">🛡️</div>
+      <h3 id="guaranteeTitle">Garansi Uang Kembali 7 Hari</h3>
+      <p id="guaranteeText">Tidak puas? Kami kembalikan uang 100%</p>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p id="footerText">© 2026 — Ebook Digital Indonesia</p>
+</div>
+
+<!-- STICKY CTA MOBILE -->
+<div class="sticky-cta">
+  <a href="#order-form" onclick="fbTrack('InitiateCheckout')" id="stickyCta">📚 DAPATKAN SEKARANG</a>
+</div>
+
+<script>
+// Apply theme color
+document.documentElement.style.setProperty('--theme', LP_CONFIG.themeColor || '#16a34a');
+
+// Render dynamic content
+document.getElementById('heroTitle').textContent = LP_CONFIG.productName;
+document.getElementById('heroSub').textContent = LP_CONFIG.subtitle;
+document.getElementById('heroImg').src = LP_CONFIG.heroImage;
+document.getElementById('heroImg').alt = LP_CONFIG.heroAlt;
+document.getElementById('priceNew').textContent = 'Rp ' + LP_CONFIG.productPrice.toLocaleString('id');
+document.getElementById('priceOld').textContent = 'Rp ' + LP_CONFIG.productOriginalPrice.toLocaleString('id');
+document.getElementById('heroCta').textContent = LP_CONFIG.ctaText;
+document.getElementById('ctaSub').textContent = LP_CONFIG.ctaSubtext;
+document.getElementById('heroUrgency').textContent = LP_CONFIG.urgencyText || '';
+document.getElementById('pageTitle').textContent = LP_CONFIG.productName;
+document.getElementById('ogTitle').content = LP_CONFIG.productName;
+document.getElementById('ogDesc').content = LP_CONFIG.ogDescription;
+document.getElementById('ogImage').content = LP_CONFIG.ogImage;
+
+// Benefits
+const bl = document.getElementById('benefitsList');
+LP_CONFIG.benefits.forEach(b => {
+  bl.innerHTML += `<div class="benefit"><div class="benefit-icon">${b.icon}</div><h3>${b.title}</h3><p>${b.desc}</p></div>`;
+});
+
+// Bonus
+const bonusList = document.getElementById('bonusList');
+LP_CONFIG.bonusItems.forEach(item => {
+  bonusList.innerHTML += `<li>${item}</li>`;
+});
+
+// Testimonials
+const tl = document.getElementById('testiList');
+LP_CONFIG.testimonials.forEach(t => {
+  tl.innerHTML += `<div class="testi"><div class="testi-stars">${'⭐'.repeat(t.stars)}</div><p class="testi-text">"${t.text}"</p><div class="testi-author">— ${t.author}</div></div>`;
+});
+
+// Meta Pixel
+if (LP_CONFIG.pixelId) {
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', LP_CONFIG.pixelId);
+  fbq('track', 'PageView');
+}
+function fbTrack(event, params) {
+  if (window.fbq) fbq('track', event, params || {});
+}
+
+// Order form
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const name = document.getElementById('fieldName').value.trim();
+  const phone = document.getElementById('fieldPhone').value.trim();
+  if (!name || !phone) return;
+  fbTrack('Purchase', {value: LP_CONFIG.productPrice, currency: 'IDR'});
+  const msg = LP_CONFIG.waMessageTemplate
+    .replace('{product}', LP_CONFIG.productName)
+    .replace('{name}', name)
+    .replace('{phone}', phone);
+  const waUrl = 'https://wa.me/' + LP_CONFIG.waNumber + '?text=' + encodeURIComponent(msg);
+  window.open(waUrl, '_blank');
+});
+</script>
+</body>
+</html>
