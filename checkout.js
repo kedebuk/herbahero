@@ -54,6 +54,9 @@
   var shippingOriginCode = cfg.shippingOriginCode || cfg.shippingOrigin || "";
   var shippingWeight = cfg.shippingWeight || 1;  // kg (Lincah uses kg, not grams)
   var paymentMethods = cfg.paymentMethods || [];
+  // Static fallback rates (used when API is slow/down). Format: [{name, service, price, etd}]
+  var shippingFallbackRates = cfg.shippingFallbackRates || [];
+  var shippingFallbackTimeout = cfg.shippingFallbackTimeout || 10000; // ms before using fallback
   // Keep shippingOrigin as alias for backward compat
   var shippingOrigin = shippingOriginCode;
 
@@ -446,7 +449,54 @@
         courierContainer.appendChild(note);
       }
 
-      // Step 2: Fetch actual costs (slow endpoint, 30-60s)
+      // Step 2: Fetch costs — with fallback race
+      // If shippingFallbackRates configured and API is slow, use fallback after timeout
+      var costResolved = false;
+
+      function applyPrices(couriers) {
+        if (costResolved) return;
+        costResolved = true;
+        var loadNote = qs('#cw-cost-loading-note');
+        if (loadNote) loadNote.remove();
+
+        if (couriers.length > 0) {
+          couriers.sort(function(a, b) { return a.price - b.price; });
+          state.couriers = couriers;
+          renderCourierCards(courierContainer, couriers);
+        } else {
+          // No prices — make cards clickable, confirm via WA
+          var failNote = document.createElement('p');
+          failNote.style.cssText = 'color:#f59e0b;font-size:12px;text-align:center;padding:4px 0 8px;margin:0';
+          failNote.innerHTML = 'Ongkir dikonfirmasi via WhatsApp setelah pemesanan.';
+          courierContainer.appendChild(failNote);
+          courierContainer.querySelectorAll('.cw-radio-card').forEach(function(card) {
+            card.style.opacity = '1';
+            card.style.cursor = 'pointer';
+            var idx = parseInt(card.getAttribute('data-c-idx'));
+            card.addEventListener('click', function() {
+              courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
+              card.classList.add('cw-rc-active');
+              state.selectedCourier = state.couriers[idx] || null;
+              updateSummary();
+            });
+          });
+        }
+      }
+
+      // Fallback timer: if API doesn't respond in time and fallback rates exist, use them
+      var fallbackTimer = null;
+      if (shippingFallbackRates.length > 0) {
+        fallbackTimer = setTimeout(function() {
+          if (!costResolved) {
+            console.log('[checkout] API slow — using fallback rates');
+            applyPrices(shippingFallbackRates.map(function(r) {
+              return { code: r.code || '', name: r.name || 'Kurir', service: r.service || 'Regular', price: r.price || 0, etd: r.etd || '', fallback: true };
+            }));
+          }
+        }, shippingFallbackTimeout);
+      }
+
+      // Fire API call in parallel
       var body = {
         originCode: shippingOriginCode || shippingOrigin || '',
         destCode: destCode,
@@ -458,13 +508,14 @@
         services: ['Regular', 'Express']
       };
 
-      return fetch(shippingApiUrl + '/cost', {
+      fetch(shippingApiUrl + '/cost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
+        if (fallbackTimer) clearTimeout(fallbackTimer);
         var couriers = [];
         var raw = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
 
@@ -494,55 +545,29 @@
           }
         });
 
-        // Remove loading note
-        var loadNote = qs('#cw-cost-loading-note');
-        if (loadNote) loadNote.remove();
-
+        // Only apply if we got real results (API might return empty)
         if (couriers.length > 0) {
-          // Sort by price ascending
-          couriers.sort(function(a, b) { return a.price - b.price; });
-          state.couriers = couriers;
-          renderCourierCards(courierContainer, couriers);
+          applyPrices(couriers);
+        } else if (!costResolved && shippingFallbackRates.length > 0) {
+          // API returned empty — use fallback
+          if (fallbackTimer) clearTimeout(fallbackTimer);
+          applyPrices(shippingFallbackRates.map(function(r) {
+            return { code: r.code || '', name: r.name || 'Kurir', service: r.service || 'Regular', price: r.price || 0, etd: r.etd || '', fallback: true };
+          }));
         } else {
-          // Cost API failed but couriers are shown — show message
-          var failNote = document.createElement('p');
-          failNote.style.cssText = 'color:#f59e0b;font-size:12px;text-align:center;padding:4px 0 8px;margin:0';
-          failNote.innerHTML = 'Ongkir belum bisa dihitung otomatis. Pilih kurir, ongkir dikonfirmasi via WhatsApp.';
-          courierContainer.appendChild(failNote);
-          // Make courier cards clickable without price
-          state.couriers.forEach(function(c) { c.price = 0; });
-          courierContainer.querySelectorAll('.cw-radio-card').forEach(function(card) {
-            card.style.opacity = '1';
-            card.style.cursor = 'pointer';
-            var idx = parseInt(card.getAttribute('data-c-idx'));
-            card.addEventListener('click', function() {
-              courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
-              card.classList.add('cw-rc-active');
-              state.selectedCourier = state.couriers[idx] || null;
-              updateSummary();
-            });
-          });
+          applyPrices([]);
         }
       })
       .catch(function(costErr) {
+        if (fallbackTimer) clearTimeout(fallbackTimer);
         console.error('[checkout] cost error:', costErr);
-        var loadNote = qs('#cw-cost-loading-note');
-        if (loadNote) {
-          loadNote.innerHTML = '⚠️ Ongkir belum bisa dihitung. Pilih kurir, ongkir dikonfirmasi via WhatsApp.';
-          loadNote.style.color = '#f59e0b';
+        if (!costResolved && shippingFallbackRates.length > 0) {
+          applyPrices(shippingFallbackRates.map(function(r) {
+            return { code: r.code || '', name: r.name || 'Kurir', service: r.service || 'Regular', price: r.price || 0, etd: r.etd || '', fallback: true };
+          }));
+        } else {
+          applyPrices([]);
         }
-        // Make cards clickable without price
-        courierContainer.querySelectorAll('.cw-radio-card').forEach(function(card) {
-          card.style.opacity = '1';
-          card.style.cursor = 'pointer';
-          var idx = parseInt(card.getAttribute('data-c-idx'));
-          card.addEventListener('click', function() {
-            courierContainer.querySelectorAll('.cw-radio-card').forEach(function(cc){ cc.classList.remove('cw-rc-active'); });
-            card.classList.add('cw-rc-active');
-            state.selectedCourier = state.couriers[idx] || null;
-            updateSummary();
-          });
-        });
       });
     })
     .catch(function(err) {

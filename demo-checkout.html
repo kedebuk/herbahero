@@ -35,8 +35,20 @@ var CHECKOUT_CONFIG = {
   // Full checkout mode (Lincah Apikurir)
   shippingEnabled: true,
   shippingApiUrl: "https://herbahero.kedebik.workers.dev/api/shipping",
-  shippingOriginCode: "20.71.05",  // Medan Kota district code (Roni's warehouse)
+  shippingOriginCode: "31.75.04",  // Kramatjati, Jakarta Timur
   shippingWeight: 1,  // kg
+
+  // Fallback rates — shown instantly if API > 10 detik (editable per LP)
+  shippingFallbackTimeout: 10000, // 10 detik, lalu pakai fallback
+  shippingFallbackRates: [
+    { name: "SAP Logistic", service: "Regular", price: 12000, etd: "2-3" },
+    { name: "JNE", service: "REG", price: 15000, etd: "2-3" },
+    { name: "SiCepat", service: "Regular", price: 13000, etd: "1-2" },
+    { name: "J&T Express", service: "Regular", price: 14000, etd: "2-3" },
+    { name: "ID Express", service: "Regular", price: 12000, etd: "2-3" },
+    { name: "Ninja Xpress", service: "Regular", price: 15000, etd: "2-4" }
+  ],
+
   paymentMethods: [
     { id: "mandiri", name: "Bank Mandiri", logo: "" },
     { id: "bca", name: "Bank Central Asia", logo: "" },
